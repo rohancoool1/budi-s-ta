@@ -1,0 +1,96 @@
+@import 'tailwindcss';
+
+@source '../views/**/*.blade.php';
+@source '../js/**/*.js';
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+
+@theme {
+    --color-ink: #171714;
+    --color-muted: #686359;
+    --color-cream: #f1ede3;
+    --color-paper: #faf8f2;
+    --color-orange: #e45f29;
+    --color-sage: #9faa8d;
+}
+
+@layer base {
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; font-family: Arial, Helvetica, sans-serif; }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+}
+
+@layer components {
+    .font-display { font-family: Georgia, 'Times New Roman', serif; }
+
+    .nav-link {
+        @apply relative flex h-full items-center text-[9px] font-black uppercase tracking-[.08em] md:text-[10px];
+    }
+
+    .nav-link::after {
+        content: '';
+        @apply absolute inset-x-0 bottom-0 h-[3px] origin-right scale-x-0 bg-orange transition-transform;
+    }
+
+    .nav-link:hover::after,
+    .nav-link:focus-visible::after,
+    .nav-link.is-active::after { @apply origin-left scale-x-100; }
+
+    .eyebrow,
+    .section-kicker { @apply m-0 text-[10px] font-black uppercase tracking-[.21em] text-orange; }
+
+    .eyebrow { @apply text-ink; }
+    .eyebrow span { @apply mr-3 inline-block h-[2px] w-9 bg-orange align-middle; }
+
+    .section-title {
+        font-family: Georgia, 'Times New Roman', serif;
+        @apply my-6 text-[clamp(3.2rem,5.7vw,5.6rem)] font-medium leading-[.92] tracking-[-.05em];
+    }
+
+    .page-title {
+        font-family: Georgia, 'Times New Roman', serif;
+        @apply mb-0 mt-6 text-[clamp(3.8rem,7vw,7rem)] font-medium leading-[.88] tracking-[-.06em];
+    }
+
+    .section-title em,
+    .page-title em { @apply font-normal text-orange; }
+
+    .btn-primary {
+        @apply inline-flex min-h-12 items-center justify-between border border-ink bg-ink px-5 text-[9px] font-black uppercase tracking-[.13em] text-white transition hover:border-orange hover:bg-orange;
+    }
+
+    .btn-primary span { @apply ml-8 text-sm; }
+
+    .link-button {
+        @apply inline-block border-b border-current bg-transparent px-0 py-1 text-[8px] font-black uppercase tracking-[.12em];
+    }
+
+    .field-label { @apply block text-[8px] font-black uppercase tracking-[.13em]; }
+
+    .form-control {
+        @apply min-h-12 w-full rounded-none border border-ink/20 bg-transparent px-3 text-xs outline-none transition focus:border-orange focus:ring-1 focus:ring-orange;
+    }
+
+    .booking-tab {
+        @apply relative min-h-16 bg-[#e2ded4] px-3 text-left text-[8px] font-black uppercase tracking-[.08em] md:px-5 md:text-[10px];
+    }
+
+    .booking-tab.is-active { @apply bg-paper; }
+    .booking-tab.is-active::after { content: ''; @apply absolute inset-x-0 bottom-[-1px] h-[3px] bg-orange; }
+
+    .filter-button { @apply border-b-2 border-transparent pb-2 text-[8px] font-black uppercase tracking-[.08em] text-muted; }
+    .filter-button.is-active { @apply border-orange text-ink; }
+
+    .gallery-photo {
+        background-repeat: no-repeat;
+        background-size: 300% 200%;
+    }
+
+    .footer-column { @apply flex flex-col items-start gap-2 text-[10px] leading-relaxed text-white/60; }
+    .footer-column b { @apply mb-3 text-[8px] tracking-[.18em] text-orange; }
+    .footer-column a { @apply border-b border-white/30; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+}
