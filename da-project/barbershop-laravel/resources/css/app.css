@@ -55,7 +55,7 @@
     .section-title em,
     .page-title em { @apply font-normal text-orange; }
 
-    .btn-primary {
+.btn-primary {
         @apply inline-flex min-h-12 items-center justify-between border border-ink bg-ink px-5 text-[9px] font-black uppercase tracking-[.13em] text-white transition hover:border-orange hover:bg-orange;
     }
 
@@ -83,12 +83,125 @@
 
     .gallery-photo {
         background-repeat: no-repeat;
-        background-size: 300% 200%;
     }
 
     .footer-column { @apply flex flex-col items-start gap-2 text-[10px] leading-relaxed text-white/60; }
     .footer-column b { @apply mb-3 text-[8px] tracking-[.18em] text-orange; }
     .footer-column a { @apply border-b border-white/30; }
+
+    .admin-table-wrap {
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    .admin-data-table {
+        table-layout: fixed;
+    }
+
+    .admin-data-table th,
+    .admin-data-table td {
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+}
+
+@media (max-width: 1279px) {
+    .admin-data-table,
+    .admin-data-table thead,
+    .admin-data-table tbody {
+        display: block;
+        width: 100%;
+    }
+
+    .admin-data-table thead tr {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .4rem;
+        padding: .65rem;
+    }
+
+    .admin-data-table thead th {
+        display: block;
+        width: auto;
+        padding: 0;
+    }
+
+    .admin-data-table thead th:last-child {
+        display: none;
+    }
+
+    .admin-data-table thead a {
+        width: auto;
+        border: 1px solid currentColor;
+        padding: .55rem .7rem;
+    }
+
+    .admin-data-table tbody {
+        display: grid;
+        gap: .8rem;
+        padding: .8rem;
+        background: #f1ede3;
+    }
+
+    .admin-data-table tbody tr {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        border: 1px solid rgb(23 23 20 / 15%);
+        background: #faf8f2;
+    }
+
+    .admin-data-table tbody td {
+        display: grid;
+        grid-template-columns: minmax(90px, .45fr) minmax(0, 1fr);
+        align-items: center;
+        gap: .65rem;
+        max-width: none;
+        border-bottom: 1px solid rgb(23 23 20 / 10%);
+        padding: .7rem .8rem;
+        text-align: left;
+    }
+
+    .admin-data-table tbody td::before {
+        content: attr(data-label);
+        font-size: 8px;
+        font-weight: 900;
+        letter-spacing: .1em;
+        text-transform: uppercase;
+        color: #686359;
+    }
+
+    .admin-data-table .admin-table-actions,
+    .admin-data-table .admin-table-empty {
+        grid-column: 1 / -1;
+    }
+
+    .admin-data-table .admin-table-actions > div {
+        justify-content: flex-start;
+    }
+
+    .admin-data-table .admin-table-empty {
+        display: block;
+    }
+
+    .admin-data-table .admin-table-empty::before {
+        content: none;
+    }
+}
+
+@media (max-width: 639px) {
+    .admin-data-table tbody tr {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .admin-data-table .admin-table-actions,
+    .admin-data-table .admin-table-empty {
+        grid-column: auto;
+    }
+}
+
+.btn-primary:disabled {
+    cursor: not-allowed;
+    opacity: .45;
 }
 
 @media (prefers-reduced-motion: reduce) {

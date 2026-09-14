@@ -1,14 +1,42 @@
 services:
+  db:
+    image: mysql:8.4
+    container_name: homcuts-db
+    environment:
+      MYSQL_DATABASE: barbershop
+      MYSQL_USER: barbershop
+      MYSQL_PASSWORD: barbershop_secret
+      MYSQL_ROOT_PASSWORD: root_secret
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
   web:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: brass-blade-web
+    container_name: homcuts-web
     env_file:
       - ./barbershop-laravel/.env
     environment:
       APP_URL: http://localhost:8000
       LOG_CHANNEL: stderr
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: barbershop
+      DB_USERNAME: barbershop
+      DB_PASSWORD: barbershop_secret
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["sh", "-c", "mkdir -p storage/app/public && php artisan storage:link --force && php artisan migrate --force && php artisan view:clear && exec php artisan serve --host=0.0.0.0 --port=8000"]
     ports:
       - "8000:8000"
     volumes:
@@ -16,5 +44,34 @@ services:
     init: true
     restart: unless-stopped
 
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: homcuts-scheduler
+    env_file:
+      - ./barbershop-laravel/.env
+    environment:
+      LOG_CHANNEL: stderr
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: barbershop
+      DB_USERNAME: barbershop
+      DB_PASSWORD: barbershop_secret
+    depends_on:
+      db:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+    command: ["php", "artisan", "schedule:work"]
+    healthcheck:
+      disable: true
+    volumes:
+      - laravel_storage:/var/www/html/storage
+    init: true
+    restart: unless-stopped
+
 volumes:
   laravel_storage:
+  mysql_data:

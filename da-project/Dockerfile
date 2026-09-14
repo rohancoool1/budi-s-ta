@@ -35,13 +35,14 @@ FROM php:8.4-cli-bookworm AS app
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         curl \
+        libicu-dev \
         libonig-dev \
-        libsqlite3-dev \
     && docker-php-ext-install \
         bcmath \
+        intl \
         mbstring \
         pcntl \
-        pdo_sqlite \
+        pdo_mysql \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -59,7 +60,8 @@ RUN mkdir -p \
         storage/logs \
         bootstrap/cache \
     && chown -R www-data:www-data storage bootstrap/cache \
-    && php artisan package:discover --ansi
+    && php artisan package:discover --ansi \
+    && php artisan storage:link
 
 USER www-data
 

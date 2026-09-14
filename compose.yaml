@@ -1,0 +1,20 @@
+services:
+  app:
+    build: .
+    image: ma-composer
+    container_name: ma-composer
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    tty: true # Menjaga container tetap menyala agar bisa diakses
+
+  mysql:
+    image: mysql:lts
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "3306:3306"
