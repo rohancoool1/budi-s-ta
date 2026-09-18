@@ -38,10 +38,10 @@
             </section>
 
             <section class="border border-ink/15 bg-paper p-5 sm:p-7">
-                <div class="mb-6 flex items-center justify-between border-b border-ink/10 pb-4"><div><p class="text-[8px] font-black uppercase tracking-[.14em] text-orange">02 · Layanan</p><h2 class="mt-1 font-display text-2xl">Tambahkan jasa barber</h2></div><span class="text-2xl text-sage">✂</span></div>
+                <div class="mb-6 flex items-center justify-between border-b border-ink/10 pb-4"><div><p class="text-[8px] font-black uppercase tracking-[.14em] text-orange">02 · Layanan</p><h2 class="mt-1 font-display text-2xl">Tambahkan jasa capster</h2></div><span class="text-2xl text-sage">✂</span></div>
                 <div class="grid gap-5 md:grid-cols-2">
                     <div><label class="field-label mb-2" for="service_id">Layanan <span class="text-muted">(opsional)</span></label><select class="form-control bg-white" id="service_id" name="service_id"><option value="">Tidak ada layanan</option>@foreach($services as $service)<option value="{{ $service->id }}" data-price="{{ $service->price }}" data-duration="{{ $service->duration_minutes }}" @selected((string) old('service_id') === (string) $service->id)>{{ $service->name }} — {{ $service->duration_minutes }} menit — Rp {{ number_format($service->price, 0, ',', '.') }}</option>@endforeach</select></div>
-                    <div><label class="field-label mb-2" for="barber_id">Barber yang melayani</label><select class="form-control bg-white" id="barber_id" name="barber_id"><option value="">Pilih barber</option>@foreach($barbers as $barber)<option value="{{ $barber->id }}" @selected((string) old('barber_id') === (string) $barber->id)>{{ $barber->name }}</option>@endforeach</select></div>
+                    <div><label class="field-label mb-2" for="barber_id">Capster yang melayani</label><select class="form-control bg-white" id="barber_id" name="barber_id"><option value="">Pilih capster</option>@foreach($barbers as $barber)<option value="{{ $barber->id }}" @selected((string) old('barber_id') === (string) $barber->id)>{{ $barber->name }}</option>@endforeach</select></div>
                     <div><p class="field-label mb-2">Tanggal layanan</p><div class="border border-ink/15 bg-cream px-4 py-3 text-xs font-bold">{{ now()->translatedFormat('d F Y') }} · Hari ini</div></div>
                     <div><label class="field-label mb-2" for="service_time">Waktu mulai</label><input class="form-control bg-white" id="service_time" name="service_time" type="time" min="07:00" max="21:30" step="60" value="{{ old('service_time', now()->addMinutes(5)->format('H:i')) }}"><p id="pos-time-help" class="mt-2 text-[8px] leading-relaxed text-muted">Waktu selesai mengikuti durasi layanan dan tidak boleh bertabrakan dengan booking maupun walk-in lain.</p></div>
                 </div>
@@ -138,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (!barber.value || !serviceTime.value) {
             availability.className = 'mt-4 border border-orange/40 bg-orange/10 px-3 py-3 text-xs text-orange';
-            availability.textContent = 'Pilih barber dan waktu mulai untuk memeriksa jadwal.';
+            availability.textContent = 'Pilih capster dan waktu mulai untuk memeriksa jadwal.';
             submit.disabled = true;
             return;
         }

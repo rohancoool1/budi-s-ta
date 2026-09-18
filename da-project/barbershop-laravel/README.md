@@ -37,11 +37,11 @@ Setelah login, buka **Akun saya** dan ganti kata sandi sementara sebelum situs d
 
 ## Alur ERP, admin, dan POS
 
-Panel admin mengelola produk, barber, layanan, galeri, booking, pesan pelanggan, pengaturan situs, serta riwayat transaksi.
+Panel admin mengelola produk, capster, layanan, galeri, booking, pesan pelanggan, pengaturan situs, serta riwayat transaksi.
 
 Riwayat transaksi menjadi sumber utama catatan keuangan. Setiap booking langsung memiliki transaksi terkait sejak dibuat, bukan baru saat layanan selesai. Penjualan tanpa booking masuk sebagai **Walk-in / Kasir**, sedangkan pesanan produk dari situs masuk sebagai **Pesanan aplikasi**. Status pekerjaan dan status pembayaran tetap dipisahkan agar, misalnya, pesanan yang sudah lunas tetapi belum diambil tetap terlihat sebagai pekerjaan tertunda.
 
-Booking tersedia mulai pukul **07.00** dan harus selesai sebelum toko tutup pukul **22.00**. Waktu mulai terakhir menyesuaikan durasi layanan serta jam kerja masing-masing barber. Sistem menolak jadwal di luar jam kerja dan jadwal yang tumpang tindih, baik dari halaman pelanggan maupun panel admin. Pilihan booking cepat otomatis menggunakan barber aktif pertama yang sedang bertugas dan masih kosong. Slot pembayaran yang belum selesai ditahan sementara dan dilepas kembali saat batas pembayaran habis.
+Booking tersedia mulai pukul **07.00** dan harus selesai sebelum toko tutup pukul **22.00**. Waktu mulai terakhir menyesuaikan durasi layanan serta jam kerja masing-masing capster. Sistem menolak jadwal di luar jam kerja dan jadwal yang tumpang tindih, baik dari halaman pelanggan maupun panel admin. Pilihan booking cepat otomatis menggunakan capster aktif pertama yang sedang bertugas dan masih kosong. Slot pembayaran yang belum selesai ditahan sementara dan dilepas kembali saat batas pembayaran habis.
 
 Menu **Kasir POS** dapat digunakan untuk:
 
@@ -59,9 +59,9 @@ Panel admin mempunyai notifikasi database untuk booking baru, pesanan baru, dan 
 
 Semua booking, pesanan produk, dan transaksi walk-in memakai pembayaran tunai. Pelanggan menerima kode transaksi, kemudian kasir membuka transaksi tersebut dan memilih **Konfirmasi uang diterima** dari menu Booking atau Kasir POS. Halaman pelanggan, status admin, dan notifikasi admin memperbarui data otomatis tanpa refresh manual. Tidak ada QRIS atau koneksi payment gateway yang aktif.
 
-Booking dan pesanan online memiliki batas waktu agar slot barber atau stok produk tidak tertahan selamanya. Batas ini dapat diatur melalui `BOOKING_CASH_EXPIRY_MINUTES` dan `PRODUCT_CASH_EXPIRY_MINUTES`.
+Booking dan pesanan online memiliki batas waktu agar slot capster atau stok produk tidak tertahan selamanya. Batas ini dapat diatur melalui `BOOKING_CASH_EXPIRY_MINUTES` dan `PRODUCT_CASH_EXPIRY_MINUTES`.
 
-Foto produk, barber, dan galeri diunggah langsung melalui formulir admin. Format yang diterima adalah JPG, PNG, dan WebP hingga 5 MB.
+Foto produk, capster, dan galeri diunggah langsung melalui formulir admin. Format yang diterima adalah JPG, PNG, dan WebP hingga 5 MB.
 
 ## Keamanan dan data
 

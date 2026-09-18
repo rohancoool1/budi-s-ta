@@ -39,7 +39,7 @@
             <div class="border-b border-ink/10 px-5 py-4"><h2 class="font-display text-2xl">Rincian transaksi</h2></div>
             <div class="divide-y divide-ink/10">
                 @foreach ($record->items as $item)
-                    <div class="grid grid-cols-[1fr_auto] gap-4 px-5 py-4 text-xs"><div><b>{{ $item->product_name }}</b><p class="mt-1 text-muted">{{ $item->item_type === 'service' ? 'Layanan oleh '.($item->barber?->name ?? 'barber') : 'Produk' }} · {{ $item->quantity }} × Rp {{ number_format($item->unit_price, 0, ',', '.') }}</p></div><b>Rp {{ number_format($item->line_total, 0, ',', '.') }}</b></div>
+                    <div class="grid grid-cols-[1fr_auto] gap-4 px-5 py-4 text-xs"><div><b>{{ $item->product_name }}</b><p class="mt-1 text-muted">{{ $item->item_type === 'service' ? 'Layanan oleh '.($item->barber?->name ?? 'capster') : 'Produk' }} · {{ $item->quantity }} × Rp {{ number_format($item->unit_price, 0, ',', '.') }}</p></div><b>Rp {{ number_format($item->line_total, 0, ',', '.') }}</b></div>
                 @endforeach
             </div>
         </section>
@@ -61,7 +61,7 @@
     @if ($resource === 'bookings' && $record && $record->transaction)
         <section class="mb-6 grid gap-px border border-ink/15 bg-ink/15 sm:grid-cols-2 xl:grid-cols-5">
             <div class="bg-paper p-5"><p class="text-[8px] font-black uppercase tracking-[.13em] text-muted">Nomor antrean</p><p class="mt-2 font-display text-4xl text-orange">{{ $record->transaction->queue_code ?: '—' }}</p><p class="mt-1 text-[9px] text-muted">{{ $record->transaction->queue_date?->translatedFormat('d M Y') }}</p></div>
-            <div class="bg-paper p-5"><p class="text-[8px] font-black uppercase tracking-[.13em] text-muted">Barber</p><p class="mt-2 text-sm font-bold">{{ $record->barber?->name ?: $record->artist_id }}</p></div>
+            <div class="bg-paper p-5"><p class="text-[8px] font-black uppercase tracking-[.13em] text-muted">Capster</p><p class="mt-2 text-sm font-bold">{{ $record->barber?->name ?: $record->artist_id }}</p></div>
             <div class="bg-paper p-5"><p class="text-[8px] font-black uppercase tracking-[.13em] text-muted">Harga layanan</p><p class="mt-2 font-display text-3xl">Rp {{ number_format($record->transaction->total, 0, ',', '.') }}</p></div>
             <div class="bg-paper p-5"><p class="text-[8px] font-black uppercase tracking-[.13em] text-muted">Pembayaran</p><p class="mt-2"><span data-live-payment-order="{{ $record->transaction->id }}" class="inline-flex border px-2 py-1 text-[8px] font-black uppercase tracking-[.1em] {{ $record->transaction->payment_status === 'paid' ? 'border-green-600/40 bg-green-50 text-green-700' : 'border-orange/40 bg-orange/10 text-orange' }}">{{ $record->transaction->payment_status === 'paid' ? 'Lunas' : 'Belum dibayar' }}</span></p><p class="mt-2 text-xs text-muted">Status booking: <b data-live-booking="{{ $record->id }}">{{ ['pending' => 'Menunggu pembayaran', 'confirmed' => 'Dikonfirmasi', 'completed' => 'Selesai', 'cancelled' => 'Dibatalkan'][$record->status] ?? $record->status }}</b></p></div>
             <div class="bg-paper p-5"><p class="text-[8px] font-black uppercase tracking-[.13em] text-muted">Transaksi terkait</p><a class="mt-2 inline-block text-sm font-bold underline" href="{{ route('admin.resources.edit', ['resource' => 'orders', 'record' => $record->transaction]) }}">#{{ str_pad($record->transaction->id, 5, '0', STR_PAD_LEFT) }} →</a></div>

@@ -72,6 +72,37 @@ services:
     init: true
     restart: unless-stopped
 
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: app
+    profiles: ["test"]
+    env_file:
+      - ./barbershop-laravel/.env
+    environment:
+      APP_ENV: testing
+      LOG_CHANNEL: stderr
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: barbershop_testing
+      DB_USERNAME: barbershop
+      DB_PASSWORD: barbershop_secret
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["./vendor/bin/phpunit", "tests/Feature/BlackBoxTest.php", "--testdox", "--colors=always", "--do-not-cache-result"]
+    volumes:
+      - ./barbershop-laravel:/var/www/html:ro
+      - test_storage:/var/www/html/storage
+      - test_bootstrap_cache:/var/www/html/bootstrap/cache
+    init: true
+
 volumes:
   laravel_storage:
   mysql_data:
+  test_storage:
+  test_bootstrap_cache:

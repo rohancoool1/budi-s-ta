@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\Barber;
+use App\Models\Booking;
 use App\Models\GalleryEntry;
+use App\Models\Order;
 use App\Models\Product;
 use App\Models\Service;
 use App\Models\User;
@@ -54,6 +56,77 @@ class AdminTest extends TestCase
             ->assertDontSee('Klik judul kolom untuk mengurutkan');
     }
 
+    public function test_dashboard_recent_transactions_exclude_cancelled_orders_and_bookings_regardless_of_payment(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $barber = Barber::query()->firstOrFail();
+        $service = Service::query()->firstOrFail();
+        $startsAt = now()->addDay()->setTime(10, 0);
+
+        $cancelledBooking = Booking::query()->create([
+            'booking_type' => 'artist',
+            'artist_id' => $barber->slug,
+            'barber_id' => $barber->id,
+            'service_id' => $service->slug,
+            'service_catalog_id' => $service->id,
+            'appointment_date' => $startsAt->toDateString(),
+            'appointment_time' => $startsAt->format('H:i'),
+            'starts_at' => $startsAt,
+            'ends_at' => $startsAt->copy()->addMinutes($service->duration_minutes),
+            'duration_minutes' => $service->duration_minutes,
+            'name' => 'Booking Batal Lunas',
+            'phone' => '081200000001',
+            'status' => 'cancelled',
+        ]);
+
+        Order::query()->create([
+            'customer_name' => 'Booking Batal Lunas',
+            'payment_method' => 'cash',
+            'payment_status' => 'paid',
+            'paid_at' => now(),
+            'channel' => 'booking',
+            'transaction_type' => 'service',
+            'booking_id' => $cancelledBooking->id,
+            'subtotal' => 30000,
+            'discount' => 0,
+            'total' => 30000,
+            'status' => 'completed',
+        ]);
+
+        Order::query()->create([
+            'customer_name' => 'Transaksi Batal Belum Bayar',
+            'payment_method' => 'cash',
+            'payment_status' => 'unpaid',
+            'channel' => 'cashier',
+            'transaction_type' => 'service',
+            'subtotal' => 30000,
+            'discount' => 0,
+            'total' => 30000,
+            'status' => 'cancelled',
+        ]);
+
+        Order::query()->create([
+            'customer_name' => 'Transaksi Aktif',
+            'payment_method' => 'cash',
+            'payment_status' => 'unpaid',
+            'channel' => 'cashier',
+            'transaction_type' => 'service',
+            'subtotal' => 30000,
+            'discount' => 0,
+            'total' => 30000,
+            'status' => 'pending',
+        ]);
+
+        $response = $this->actingAs($admin)->get(route('admin.dashboard'))->assertOk();
+        $recentCustomers = $response->viewData('recentOrders')->pluck('customer_name')->all();
+
+        $this->assertSame(['Transaksi Aktif'], $recentCustomers);
+        $response
+            ->assertSee('Transaksi Aktif')
+            ->assertDontSee('Booking Batal Lunas')
+            ->assertDontSee('Transaksi Batal Belum Bayar');
+    }
+
     public function test_admin_operational_pages_include_live_refresh_regions(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);
@@ -84,6 +157,33 @@ class AdminTest extends TestCase
         $this->assertSame(['bookings', 'orders'], array_slice($keys, 0, 2));
         $this->assertSame(array_search('services', $keys, true) + 1, array_search('products', $keys, true));
         $this->assertSame(['bookings', 'orders'], $highlighted);
+    }
+
+    public function test_admin_uses_capster_label_and_friendly_resource_url(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $navigation = collect(AdminResources::navigation());
+        $capsterNavigation = $navigation->firstWhere('key', 'barbers');
+
+        $this->assertSame('capsters', $capsterNavigation['route_key']);
+        $this->assertSame('Capster', $capsterNavigation['label']);
+
+        $this->actingAs($admin)
+            ->get(route('admin.resources.index', ['resource' => 'capsters']))
+            ->assertOk()
+            ->assertSee('Pengelolaan data')
+            ->assertSee('Capster')
+            ->assertSee('/admin/capsters/create', false)
+            ->assertDontSee('/admin/barbers', false)
+            ->assertDontSee('Kelola foto profil, spesialisasi, biodata, dan ketersediaan barber.');
+
+        $this->actingAs($admin)
+            ->get(route('admin.pos.create'))
+            ->assertOk()
+            ->assertSee('Capster yang melayani')
+            ->assertSee('Pilih capster')
+            ->assertDontSee('Barber yang melayani')
+            ->assertDontSee('Pilih barber');
     }
 
     public function test_every_admin_resource_table_has_clickable_ajax_sorting_headers(): void

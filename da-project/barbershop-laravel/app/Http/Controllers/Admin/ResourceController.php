@@ -314,7 +314,7 @@ class ResourceController extends Controller
 
         if ($data['booking_type'] === 'artist' && empty($data['artist_id'])) {
             throw ValidationException::withMessages([
-                'artist_id' => 'Pilih barber untuk jenis booking ini.',
+                'artist_id' => 'Pilih capster untuk jenis booking ini.',
             ]);
         }
 
@@ -531,7 +531,7 @@ class ResourceController extends Controller
                 ['name' => 'category', 'column' => 'category', 'label' => 'Kategori', 'options' => $definition['model']::query()->whereNotNull('category')->distinct()->orderBy('category')->pluck('category', 'category')->all()],
                 ['name' => 'active', 'column' => 'is_active', 'label' => 'Tampilan', 'options' => $booleanOptions],
             ],
-            'barbers' => [
+            'barbers', 'capsters' => [
                 ['name' => 'active', 'column' => 'is_active', 'label' => 'Ketersediaan', 'options' => $booleanOptions],
             ],
             'services' => [
@@ -539,7 +539,7 @@ class ResourceController extends Controller
             ],
             'gallery' => [
                 ['name' => 'published', 'column' => 'is_published', 'label' => 'Publikasi', 'options' => $booleanOptions],
-                ['name' => 'barber', 'column' => 'barber_id', 'label' => 'Barber', 'options' => Barber::query()->orderBy('name')->pluck('name', 'id')->mapWithKeys(fn ($name, $id) => [(string) $id => $name])->all()],
+                ['name' => 'barber', 'column' => 'barber_id', 'label' => 'Capster', 'options' => Barber::query()->orderBy('name')->pluck('name', 'id')->mapWithKeys(fn ($name, $id) => [(string) $id => $name])->all()],
             ],
             'messages' => [
                 ['name' => 'message_status', 'column' => 'status', 'label' => 'Status', 'options' => ['new' => 'Baru', 'in_progress' => 'Sedang ditangani', 'replied' => 'Sudah dibalas', 'archived' => 'Diarsipkan']],

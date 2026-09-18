@@ -3,9 +3,9 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="@yield('description', 'Layanan barber dan produk perawatan HOMCUTS di Bulurokeng, Makassar.')">
+    <meta name="description" content="@yield('description', 'Layanan capster dan produk perawatan HOMCUTS di Bulurokeng, Makassar.')">
     <meta property="og:title" content="@yield('title', 'HOMCUTS Barbershop')">
-    <meta property="og:description" content="Potongan presisi, layanan barber, dan produk perawatan di Bulurokeng, Makassar.">
+    <meta property="og:description" content="Potongan presisi, layanan capster, dan produk perawatan di Bulurokeng, Makassar.">
     <meta property="og:image" content="{{ url('/homcuts-storefront.png') }}">
     <link rel="icon" type="image/png" href="{{ asset('homcuts-logo-transparent.png') }}">
     <title>@yield('title', 'HOMCUTS') · HOMCUTS</title>

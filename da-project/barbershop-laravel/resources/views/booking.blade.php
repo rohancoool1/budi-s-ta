@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('title', 'Booking')
-@section('description', 'Booking layanan atau pilih barber favorit Anda di HOMCUTS Bulurokeng.')
+@section('description', 'Booking layanan atau pilih capster favorit Anda di HOMCUTS Bulurokeng.')
 
 @section('content')
     @php
@@ -12,7 +12,7 @@
     <section class="border-b border-ink bg-cream px-6 pb-16 pt-20 md:px-[6vw] md:pb-20 md:pt-28">
         <div class="grid items-end gap-8 lg:grid-cols-[1.4fr_.6fr]">
             <div><p class="section-kicker">01 / BOOKING</p><h1 class="page-title">Kursi Anda<br><em>sudah menunggu.</em></h1></div>
-            <p class="max-w-md font-display text-lg leading-relaxed text-muted">Pesan dalam waktu kurang dari satu menit. Pilih barber yang tersedia atau barber yang paling mengenal gaya Anda.</p>
+            <p class="max-w-md font-display text-lg leading-relaxed text-muted">Pesan dalam waktu kurang dari satu menit. Pilih capster yang tersedia atau capster yang paling mengenal gaya Anda.</p>
         </div>
     </section>
 
@@ -23,11 +23,11 @@
                 <input id="booking-type" type="hidden" name="booking_type" value="{{ $initialMode }}">
                 <div class="-mx-5 -mt-5 mb-7 grid grid-cols-2 border-b border-ink md:-mx-8 md:-mt-8" role="tablist" aria-label="Jenis booking">
                     <button class="booking-tab" data-booking-mode="service" type="button" role="tab" aria-controls="artist-options">01 · Booking cepat</button>
-                    <button class="booking-tab border-l border-ink" data-booking-mode="artist" type="button" role="tab" aria-controls="artist-options">02 · Pilih barber</button>
+                    <button class="booking-tab border-l border-ink" data-booking-mode="artist" type="button" role="tab" aria-controls="artist-options">02 · Pilih capster</button>
                 </div>
 
                 <fieldset id="artist-options" class="mb-6 hidden">
-                    <legend class="field-label mb-3">Pilih barber Anda</legend>
+                    <legend class="field-label mb-3">Pilih capster Anda</legend>
                     <div class="grid gap-2 md:grid-cols-3">
                         @foreach ($artists as $artist)
                             <label class="artist-option cursor-pointer border border-ink/20 p-2 has-checked:border-ink has-checked:bg-cream">
@@ -50,7 +50,7 @@
 
                 <div class="mt-5 grid gap-4 sm:grid-cols-2">
                     <div><label class="field-label" for="appointment_date">Tanggal</label><input class="form-control mt-2" id="appointment_date" name="appointment_date" type="date" min="{{ now()->toDateString() }}" value="{{ old('appointment_date', now()->addDay()->toDateString()) }}" required></div>
-                    <div><label class="field-label" for="appointment_time">Pilih waktu (mulai 07.00)</label><input class="form-control mt-2" id="appointment_time" name="appointment_time" type="time" min="07:00" max="21:30" step="60" lang="id-ID" value="{{ old('appointment_time', '09:30') }}" required><p id="booking-time-help" class="mt-2 text-[8px] leading-relaxed text-muted">Waktu terakhir menyesuaikan durasi layanan dan jam kerja barber agar selesai sebelum 22.00.</p></div>
+                    <div><label class="field-label" for="appointment_time">Pilih waktu (mulai 07.00)</label><input class="form-control mt-2" id="appointment_time" name="appointment_time" type="time" min="07:00" max="21:30" step="60" lang="id-ID" value="{{ old('appointment_time', '09:30') }}" required><p id="booking-time-help" class="mt-2 text-[8px] leading-relaxed text-muted">Waktu terakhir menyesuaikan durasi layanan dan jam kerja capster agar selesai sebelum 22.00.</p></div>
                     <div><label class="field-label" for="name">Nama Anda</label><input class="form-control mt-2" id="name" name="name" value="{{ old('name') }}" placeholder="Nama lengkap" required></div>
                     <div><label class="field-label" for="phone">Nomor WhatsApp</label><input class="form-control mt-2" id="phone" name="phone" value="{{ old('phone') }}" placeholder="+62 812 3456 7890" required></div>
                 </div>
@@ -69,7 +69,7 @@
         </div>
 
         <aside>
-            <p class="section-kicker">BARBER ANDA</p>
+            <p class="section-kicker">CAPSTER ANDA</p>
             <h2 class="mb-8 mt-3 font-display text-4xl tracking-[-.04em]">Pilih tangan yang tepat.</h2>
             <div class="border-t border-ink">
                 @foreach ($artists as $artist)

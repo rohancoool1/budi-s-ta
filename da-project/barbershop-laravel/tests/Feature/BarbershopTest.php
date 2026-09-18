@@ -54,6 +54,40 @@ class BarbershopTest extends TestCase
         $this->assertFileExists(public_path('homcuts-storefront.png'));
     }
 
+    public function test_public_pages_use_capster_terminology_and_home_product_marquee(): void
+    {
+        $products = Product::query()->where('is_active', true)->orderBy('sort_order')->get();
+
+        $home = $this->get(route('home'))
+            ->assertOk()
+            ->assertSee('Tampil cakep')
+            ->assertSee('di mana aja.')
+            ->assertSee('Kenali <em>capster Anda.</em>', false)
+            ->assertSee('Pilih capster')
+            ->assertSee('class="product-marquee', false)
+            ->assertDontSee('Dibuat untuk')
+            ->assertDontSee('POTONGAN KLASIK')
+            ->assertDontSee('Pilih barber')
+            ->assertDontSee('Kenali <em>barber Anda.</em>', false);
+
+        foreach ($products as $product) {
+            $this->assertSame(2, substr_count($home->getContent(), e(strtoupper($product->name))));
+            $this->assertSame(2, substr_count($home->getContent(), asset($product->image_path ?: 'og.png')));
+        }
+
+        $this->get(route('booking'))
+            ->assertOk()
+            ->assertSee('Pilih capster')
+            ->assertSee('CAPSTER ANDA')
+            ->assertDontSee('Pilih barber')
+            ->assertDontSee('BARBER ANDA');
+
+        $this->get(route('shop'))
+            ->assertOk()
+            ->assertSee('Pilihan capster')
+            ->assertDontSee('Pilihan barber');
+    }
+
     public function test_homcuts_gallery_is_separate_from_unique_booking_services(): void
     {
         $gallery = GalleryEntry::query()->orderBy('sort_order')->get();

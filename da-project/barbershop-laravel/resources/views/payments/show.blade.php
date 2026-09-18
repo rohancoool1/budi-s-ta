@@ -33,13 +33,13 @@
                 <h1 class="mt-5 font-display text-5xl leading-[.95] tracking-[-.05em]">{{ $isBooking ? 'Amankan jadwal Anda.' : 'Selesaikan pesanan Anda.' }}</h1>
                 <div class="mt-10 space-y-4 border-t border-white/20 pt-6 text-xs">
                     <div class="flex justify-between gap-5"><span class="text-white/55">Pelanggan</span><b class="text-right">{{ $payment->order->customer_name }}</b></div>
-                    <div class="flex justify-between gap-5"><span class="text-white/55">Kategori</span><b>{{ $isBooking ? 'Booking barber' : ($payment->order->channel === 'cashier' ? 'Kasir / walk-in' : 'Pesanan produk') }}</b></div>
+                    <div class="flex justify-between gap-5"><span class="text-white/55">Kategori</span><b>{{ $isBooking ? 'Booking capster' : ($payment->order->channel === 'cashier' ? 'Kasir / walk-in' : 'Pesanan produk') }}</b></div>
                     @if ($payment->order->queue_code)
                         <div class="flex items-center justify-between gap-5 border-y border-white/20 py-4"><span class="text-white/55">Nomor antrean</span><b id="booking-queue" class="font-display text-4xl text-orange">{{ $payment->order->queue_code }}</b></div>
                     @endif
                     @if ($isBooking)
                         <div class="flex justify-between gap-5"><span class="text-white/55">Jadwal</span><b id="booking-schedule" class="text-right">{{ $payment->order->booking?->starts_at?->translatedFormat('d M Y, H:i') ?? 'Jadwal lama' }}@if($payment->order->booking?->ends_at)–{{ $payment->order->booking->ends_at->format('H:i') }}@endif</b></div>
-                        <div class="flex justify-between gap-5"><span class="text-white/55">Barber</span><b id="booking-barber">{{ $payment->order->booking?->barber?->name ?? $payment->order->booking?->artist_id ?? 'Belum ditentukan' }}</b></div>
+                        <div class="flex justify-between gap-5"><span class="text-white/55">Capster</span><b id="booking-barber">{{ $payment->order->booking?->barber?->name ?? $payment->order->booking?->artist_id ?? 'Belum ditentukan' }}</b></div>
                         <div class="flex justify-between gap-5"><span class="text-white/55">Layanan</span><b id="booking-service" class="text-right">{{ $payment->order->booking?->service?->name ?? $payment->order->booking?->service_id }}</b></div>
                     @endif
                     <div class="flex justify-between gap-5 border-t border-white/20 pt-4"><span class="text-white/55">Total</span><b class="font-display text-2xl">Rp {{ number_format($payment->amount, 0, ',', '.') }}</b></div>
@@ -57,7 +57,7 @@
 
                 @if ($isBooking)
                     <div id="booking-schedule-notice" class="mb-5 border border-orange/40 bg-orange/10 px-4 py-3 text-xs leading-6 text-orange {{ $payment->order->booking?->schedule_changed_at ? '' : 'hidden' }}" role="status" aria-live="polite">
-                        <b>Jadwal booking diperbarui oleh admin.</b> Periksa kembali jadwal, barber, dan nomor antrean terbaru pada halaman ini.
+                        <b>Jadwal booking diperbarui oleh admin.</b> Periksa kembali jadwal, capster, dan nomor antrean terbaru pada halaman ini.
                     </div>
                 @endif
 

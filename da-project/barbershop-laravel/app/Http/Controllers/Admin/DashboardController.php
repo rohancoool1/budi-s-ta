@@ -13,7 +13,9 @@ class DashboardController extends Controller
 {
     public function __invoke(Request $request): View
     {
-        $recentOrders = Order::with(['booking.barber', 'items.barber', 'latestPayment']);
+        $recentOrders = Order::with(['booking.barber', 'items.barber', 'latestPayment'])
+            ->where('status', '!=', 'cancelled')
+            ->whereDoesntHave('booking', fn ($query) => $query->where('status', 'cancelled'));
 
         if ($request->filled('transaction_q')) {
             $search = trim((string) $request->input('transaction_q'));

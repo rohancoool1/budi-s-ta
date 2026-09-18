@@ -64,8 +64,8 @@ class BookingAvailabilityService
         if ($barbers->isEmpty()) {
             throw ValidationException::withMessages([
                 'artist_id' => $barberSlug
-                    ? 'Barber yang dipilih sedang tidak tersedia.'
-                    : 'Belum ada barber aktif yang dapat menerima booking.',
+                    ? 'Capster yang dipilih sedang tidak tersedia.'
+                    : 'Belum ada capster aktif yang dapat menerima booking.',
             ]);
         }
 
@@ -95,15 +95,15 @@ class BookingAvailabilityService
         if (! $hasBarberOnShift) {
             throw ValidationException::withMessages([
                 'appointment_time' => $barberSlug
-                    ? 'Waktu tersebut berada di luar jam kerja barber yang dipilih.'
-                    : 'Tidak ada barber yang bertugas sampai layanan selesai pada waktu tersebut.',
+                    ? 'Waktu tersebut berada di luar jam kerja capster yang dipilih.'
+                    : 'Tidak ada capster yang bertugas sampai layanan selesai pada waktu tersebut.',
             ]);
         }
 
         throw ValidationException::withMessages([
             'appointment_time' => $barberSlug
-                ? 'Slot ini sudah digunakan booking atau walk-in untuk barber tersebut. Silakan pilih waktu lain.'
-                : 'Semua barber sudah terisi pada waktu tersebut. Silakan pilih waktu lain.',
+                ? 'Slot ini sudah digunakan booking atau walk-in untuk capster tersebut. Silakan pilih waktu lain.'
+                : 'Semua capster sudah terisi pada waktu tersebut. Silakan pilih waktu lain.',
         ]);
     }
 

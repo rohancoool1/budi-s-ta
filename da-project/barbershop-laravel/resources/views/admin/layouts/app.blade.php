@@ -30,7 +30,7 @@
                     Kasir POS <span>＋</span>
                 </a>
                 @foreach ($adminNavigation as $item)
-                    <a href="{{ route('admin.resources.index', ['resource' => $item['key']]) }}" class="mb-1 flex items-center justify-between px-4 py-3 text-[9px] font-black uppercase tracking-[.12em] {{ request()->route('resource') === $item['key'] ? 'bg-orange text-white' : ($item['highlighted'] ? 'border border-orange/40 text-orange hover:bg-orange hover:text-white' : 'text-white/65 hover:bg-white/10 hover:text-white') }}">
+                    <a href="{{ route('admin.resources.index', ['resource' => $item['route_key']]) }}" class="mb-1 flex items-center justify-between px-4 py-3 text-[9px] font-black uppercase tracking-[.12em] {{ in_array(request()->route('resource'), [$item['key'], $item['route_key']], true) ? 'bg-orange text-white' : ($item['highlighted'] ? 'border border-orange/40 text-orange hover:bg-orange hover:text-white' : 'text-white/65 hover:bg-white/10 hover:text-white') }}">
                         {{ $item['short_label'] }} <span class="text-white/30">→</span>
                     </a>
                 @endforeach

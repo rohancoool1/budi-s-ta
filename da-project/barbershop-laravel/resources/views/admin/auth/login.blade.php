@@ -20,7 +20,7 @@
             <div class="relative max-w-xl">
                 <p class="text-[10px] font-black uppercase tracking-[.24em] text-orange">Area pengelolaan privat</p>
                 <h1 class="mt-5 font-display text-7xl leading-[.9] tracking-[-.055em]">Kelola bisnis.<br><em class="font-normal text-sage">Tetap tajam.</em></h1>
-                <p class="mt-7 max-w-md text-sm leading-7 text-white/55">Kelola kasir, booking, transaksi, produk, barber, galeri, pesan, dan informasi situs dari satu tempat.</p>
+                <p class="mt-7 max-w-md text-sm leading-7 text-white/55">Kelola kasir, booking, transaksi, produk, capster, galeri, pesan, dan informasi situs dari satu tempat.</p>
             </div>
             <p class="relative text-[9px] font-bold uppercase tracking-[.14em] text-white/35">Khusus staf berwenang</p>
         </section>

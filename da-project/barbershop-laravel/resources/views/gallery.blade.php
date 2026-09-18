@@ -8,7 +8,7 @@
         <div class="flex flex-col justify-center px-6 py-20 md:px-[6vw] md:py-28">
             <p class="section-kicker">03 / KARYA KAMI</p>
             <h1 class="page-title">Potongan yang<br><em>berbicara tenang.</em></h1>
-            <p class="max-w-md font-display text-lg leading-relaxed text-muted">Koleksi hasil potongan, referensi gaya, dan detail yang dapat Anda bawa saat berkonsultasi dengan barber.</p>
+            <p class="max-w-md font-display text-lg leading-relaxed text-muted">Koleksi hasil potongan, referensi gaya, dan detail yang dapat Anda bawa saat berkonsultasi dengan capster.</p>
         </div>
         <div class="min-h-[420px] border-t border-ink bg-cover bg-center lg:border-l lg:border-t-0" style="background-image:url('{{ asset($gallery->first()?->image_path ?? 'haircut-gallery.png') }}');background-position:{{ $gallery->first()?->position ?? '50% 50%' }};background-size:{{ $gallery->first()?->image_size ?? 'cover' }}"></div>
     </section>

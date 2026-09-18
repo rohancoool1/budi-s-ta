@@ -15,11 +15,13 @@ class AdminResources
 {
     public static function keys(): array
     {
-        return array_keys(self::definitions());
+        return [...array_keys(self::definitions()), 'capsters'];
     }
 
     public static function get(string $key): array
     {
+        $key = $key === 'capsters' ? 'barbers' : $key;
+
         abort_unless(array_key_exists($key, self::definitions()), 404);
 
         $resource = self::definitions()[$key];
@@ -58,6 +60,7 @@ class AdminResources
         return $orderedKeys
             ->map(fn (string $key) => [
                 'key' => $key,
+                'route_key' => $key === 'barbers' ? 'capsters' : $key,
                 'label' => $definitions[$key]['label'],
                 'short_label' => $definitions[$key]['short_label'] ?? $definitions[$key]['label'],
                 'highlighted' => in_array($key, ['bookings', 'orders'], true),
@@ -101,9 +104,9 @@ class AdminResources
                 ],
             ],
             'barbers' => [
-                'label' => 'Barber',
-                'singular' => 'barber',
-                'description' => 'Kelola foto profil, spesialisasi, biodata, dan ketersediaan barber.',
+                'label' => 'Capster',
+                'singular' => 'capster',
+                'description' => 'Kelola foto profil, spesialisasi, biodata, dan ketersediaan capster.',
                 'model' => Barber::class,
                 'table' => 'barbers',
                 'search' => ['name', 'slug', 'role'],
@@ -117,7 +120,7 @@ class AdminResources
                     ['key' => 'is_active', 'label' => 'Dapat dipesan', 'format' => 'boolean'],
                 ],
                 'fields' => [
-                    ['name' => 'image_upload', 'label' => 'Foto barber', 'type' => 'file', 'accept' => 'image/jpeg,image/png,image/webp', 'stores_to' => 'image_path', 'related_defaults' => ['image_position' => '50% 50%', 'image_size' => 'cover'], 'required_on_create' => true, 'wide' => true, 'rules' => $imageRules],
+                    ['name' => 'image_upload', 'label' => 'Foto capster', 'type' => 'file', 'accept' => 'image/jpeg,image/png,image/webp', 'stores_to' => 'image_path', 'related_defaults' => ['image_position' => '50% 50%', 'image_size' => 'cover'], 'required_on_create' => true, 'wide' => true, 'rules' => $imageRules],
                     ['name' => 'name', 'label' => 'Nama lengkap', 'type' => 'text', 'rules' => ['required', 'string', 'max:120']],
                     ['name' => 'slug', 'label' => 'Slug URL', 'type' => 'text', 'rules' => ['required', 'string', 'max:100'], 'unique' => true],
                     ['name' => 'initials', 'label' => 'Inisial', 'type' => 'text', 'rules' => ['required', 'string', 'max:4']],
@@ -165,14 +168,14 @@ class AdminResources
                 'columns' => [
                     ['key' => 'style', 'label' => 'Model rambut'],
                     ['key' => 'client', 'label' => 'Koleksi / kredit'],
-                    ['key' => 'barber.name', 'label' => 'Barber', 'sort' => 'barber_name'],
+                    ['key' => 'barber.name', 'label' => 'Capster', 'sort' => 'barber_name'],
                     ['key' => 'is_published', 'label' => 'Dipublikasikan', 'format' => 'boolean'],
                 ],
                 'fields' => [
                     ['name' => 'image_upload', 'label' => 'Unggah foto hasil potongan', 'type' => 'file', 'accept' => 'image/jpeg,image/png,image/webp', 'stores_to' => 'image_path', 'related_defaults' => ['position' => '50% 50%', 'image_size' => 'cover'], 'required_on_create' => true, 'wide' => true, 'rules' => $imageRules],
                     ['name' => 'style', 'label' => 'Nama model rambut', 'type' => 'text', 'rules' => ['required', 'string', 'max:120']],
                     ['name' => 'client', 'label' => 'Koleksi / kredit foto', 'type' => 'text', 'default' => 'Koleksi HOMCUTS', 'rules' => ['required', 'string', 'max:120']],
-                    ['name' => 'barber_id', 'label' => 'Barber', 'type' => 'select', 'options' => 'barber_ids', 'placeholder' => 'Tidak memilih barber', 'rules' => ['nullable', 'exists:barbers,id']],
+                    ['name' => 'barber_id', 'label' => 'Capster', 'type' => 'select', 'options' => 'barber_ids', 'placeholder' => 'Tidak memilih capster', 'rules' => ['nullable', 'exists:barbers,id']],
                     ['name' => 'position', 'label' => 'Fokus foto', 'type' => 'select', 'options' => ['0% 0%' => 'Kiri atas', '50% 0%' => 'Tengah atas', '100% 0%' => 'Kanan atas', '0% 100%' => 'Kiri bawah', '50% 100%' => 'Tengah bawah', '100% 100%' => 'Kanan bawah', '50% 50%' => 'Tengah'], 'rules' => ['required', 'in:0% 0%,50% 0%,100% 0%,0% 100%,50% 100%,100% 100%,50% 50%']],
                     ['name' => 'quote', 'label' => 'Deskripsi model rambut', 'type' => 'textarea', 'wide' => true, 'rules' => ['required', 'string', 'max:1000']],
                     ['name' => 'sort_order', 'label' => 'Urutan', 'type' => 'number', 'min' => 0, 'default' => 0, 'rules' => ['required', 'integer', 'min:0']],
@@ -183,7 +186,7 @@ class AdminResources
                 'label' => 'Jadwal booking',
                 'short_label' => 'Booking',
                 'singular' => 'booking',
-                'description' => 'Kelola jadwal, barber, serta status layanan. Setiap booking langsung memiliki transaksi dan status pembayaran.',
+                'description' => 'Kelola jadwal, capster, serta status layanan. Setiap booking langsung memiliki transaksi dan status pembayaran.',
                 'model' => Booking::class,
                 'table' => 'bookings',
                 'with' => ['barber', 'service', 'transaction.latestPayment'],
@@ -195,15 +198,15 @@ class AdminResources
                     ['key' => 'appointment_time', 'label' => 'Waktu', 'format' => 'time'],
                     ['key' => 'transaction.queue_code', 'label' => 'Antrean', 'sort' => 'queue_number'],
                     ['key' => 'name', 'label' => 'Pelanggan'],
-                    ['key' => 'barber.name', 'label' => 'Barber', 'sort' => 'barber_name'],
+                    ['key' => 'barber.name', 'label' => 'Capster', 'sort' => 'barber_name'],
                     ['key' => 'service.name', 'label' => 'Layanan', 'sort' => 'service_name'],
                     ['key' => 'transaction.total', 'label' => 'Harga', 'format' => 'money', 'sort' => 'transaction_total'],
                     ['key' => 'transaction.payment_status', 'label' => 'Pembayaran', 'format' => 'payment', 'sort' => 'payment_status'],
                     ['key' => 'status', 'label' => 'Status', 'format' => 'status'],
                 ],
                 'fields' => [
-                    ['name' => 'booking_type', 'label' => 'Jenis booking', 'type' => 'select', 'options' => ['service' => 'Barber mana saja yang tersedia', 'artist' => 'Pilih barber tertentu'], 'rules' => ['required', 'in:service,artist']],
-                    ['name' => 'artist_id', 'label' => 'Barber pilihan', 'type' => 'select', 'options' => 'barber_slugs', 'placeholder' => 'Barber mana saja', 'rules' => ['nullable', 'exists:barbers,slug']],
+                    ['name' => 'booking_type', 'label' => 'Jenis booking', 'type' => 'select', 'options' => ['service' => 'Capster mana saja yang tersedia', 'artist' => 'Pilih capster tertentu'], 'rules' => ['required', 'in:service,artist']],
+                    ['name' => 'artist_id', 'label' => 'Capster pilihan', 'type' => 'select', 'options' => 'barber_slugs', 'placeholder' => 'Capster mana saja', 'rules' => ['nullable', 'exists:barbers,slug']],
                     ['name' => 'service_id', 'label' => 'Layanan', 'type' => 'select', 'options' => 'service_slugs', 'rules' => ['required', 'exists:services,slug']],
                     ['name' => 'appointment_date', 'label' => 'Tanggal kunjungan', 'type' => 'date', 'rules' => ['required', 'date_format:Y-m-d']],
                     ['name' => 'appointment_time', 'label' => 'Waktu kunjungan (07.00–21.30)', 'type' => 'time', 'min' => '07:00', 'max' => '21:30', 'step' => 60, 'rules' => ['required', 'date_format:H:i']],
@@ -232,7 +235,7 @@ class AdminResources
                     ['key' => 'created_at', 'label' => 'Waktu', 'format' => 'datetime'],
                     ['key' => 'channel', 'label' => 'Kategori', 'format' => 'source'],
                     ['key' => 'customer_name', 'label' => 'Pelanggan'],
-                    ['key' => 'barber_name', 'label' => 'Barber', 'sort' => 'barber_name'],
+                    ['key' => 'barber_name', 'label' => 'Capster', 'sort' => 'barber_name'],
                     ['key' => 'transaction_type', 'label' => 'Jenis', 'format' => 'transaction_type'],
                     ['key' => 'status', 'label' => 'Layanan / pesanan', 'format' => 'status'],
                     ['key' => 'payment_status', 'label' => 'Pembayaran', 'format' => 'payment'],

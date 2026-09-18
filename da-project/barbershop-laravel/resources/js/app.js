@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const latestMinutes = Math.min((21 * 60) + 30, (22 * 60) - duration);
         const latest = `${String(Math.floor(latestMinutes / 60)).padStart(2, '0')}:${String(latestMinutes % 60).padStart(2, '0')}`;
         bookingTime.max = latest;
-        if (bookingTimeHelp) bookingTimeHelp.textContent = `Untuk layanan ini, pilih antara 07.00–${latest.replace(':', '.')}. Waktu juga mengikuti jam kerja barber.`;
+        if (bookingTimeHelp) bookingTimeHelp.textContent = `Untuk layanan ini, pilih antara 07.00–${latest.replace(':', '.')}. Waktu juga mengikuti jam kerja capster.`;
     };
 
     const checkBookingAvailability = () => {
@@ -102,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 availabilityBox.className = 'mt-4 border border-sage bg-sage/15 px-3 py-3 text-xs text-green-800';
-                availabilityBox.textContent = `${result.message} Barber: ${result.barber}.`;
+                availabilityBox.textContent = `${result.message} Capster: ${result.barber}.`;
                 submit.disabled = false;
             } catch (error) {
                 if (error.name !== 'AbortError') {
@@ -191,7 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
         cartSummary.classList.toggle('hidden', cart.length === 0);
 
         if (cart.length === 0) {
-            cartItems.innerHTML = '<div class="grid h-full place-content-center text-center"><span class="font-display text-5xl text-sage">∅</span><h3 class="mt-5 font-display text-3xl">Keranjang masih kosong.</h3><p class="mt-2 text-xs text-muted">Temukan produk pilihan barber kami.</p><a class="link-button mx-auto mt-6" href="/shop">Lihat toko produk →</a></div>';
+            cartItems.innerHTML = '<div class="grid h-full place-content-center text-center"><span class="font-display text-5xl text-sage">∅</span><h3 class="mt-5 font-display text-3xl">Keranjang masih kosong.</h3><p class="mt-2 text-xs text-muted">Temukan produk pilihan capster kami.</p><a class="link-button mx-auto mt-6" href="/shop">Lihat toko produk →</a></div>';
         } else {
             cartItems.innerHTML = cart.map((item) => `
                 <div class="grid grid-cols-[88px_1fr] gap-4 border-b border-ink/15 py-5">

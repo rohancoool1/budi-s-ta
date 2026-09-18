@@ -1,13 +1,13 @@
 @extends('layouts.app')
 
 @section('title', 'Toko Produk')
-@section('description', 'Belanja produk rambut dan perawatan pilihan barber HOMCUTS.')
+@section('description', 'Belanja produk rambut dan perawatan pilihan capster HOMCUTS.')
 
 @section('content')
     <section class="border-b border-ink bg-[#dfd9cd] px-6 pb-16 pt-20 md:px-[6vw] md:pb-20 md:pt-28">
         <div class="grid items-end gap-8 lg:grid-cols-[1.4fr_.6fr]">
             <div><p class="section-kicker">02 / TOKO PRODUK</p><h1 class="page-title">Rambut rapi,<br><em>di antara kunjungan.</em></h1></div>
-            <p class="max-w-md font-display text-lg leading-relaxed text-muted">Produk yang kami gunakan di kursi barber, dipilih untuk membuat perawatan harian Anda lebih sederhana.</p>
+            <p class="max-w-md font-display text-lg leading-relaxed text-muted">Produk yang kami gunakan di kursi capster, dipilih untuk membuat perawatan harian Anda lebih sederhana.</p>
         </div>
     </section>
 
@@ -46,7 +46,7 @@
     </section>
 
     <section class="grid border-y border-ink md:grid-cols-3">
-        @foreach ([['Pilihan barber','Produk yang kami gunakan setiap hari.'],['Bayar di kasir','Pembayaran dilakukan secara tunai saat pengambilan.'],['Ambil di toko','Tanpa ongkir dan tanpa menunggu pengiriman.']] as $item)
+        @foreach ([['Pilihan capster','Produk yang kami gunakan setiap hari.'],['Bayar di kasir','Pembayaran dilakukan secara tunai saat pengambilan.'],['Ambil di toko','Tanpa ongkir dan tanpa menunggu pengiriman.']] as $item)
             <div class="border-b border-ink p-10 last:border-b-0 md:border-b-0 md:border-r md:last:border-r-0 md:px-[5vw]">
                 <span class="font-display text-sm italic text-orange">0{{ $loop->iteration }}</span><h2 class="my-3 font-display text-2xl">{{ $item[0] }}</h2><p class="text-[10px] text-muted">{{ $item[1] }}</p>
             </div>

@@ -26,14 +26,28 @@
         </div>
     </section>
 
-    <div class="flex min-h-14 items-center justify-start gap-6 overflow-hidden whitespace-nowrap bg-ink px-8 text-[9px] font-black tracking-[.18em] text-paper md:justify-around">
-        <span>POTONGAN KLASIK</span><i class="text-orange">✦</i><span>FADE MODERN</span><i class="text-orange">✦</i><span>CUKUR HANDUK HANGAT</span><i class="text-orange">✦</i><span>DESAIN JANGGUT</span>
-    </div>
+    @if ($featuredProducts->isNotEmpty())
+        <div class="product-marquee border-b border-ink bg-ink text-paper" aria-label="Produk pilihan HOMCUTS">
+            <div class="product-marquee__track">
+                @foreach ([false, true] as $duplicate)
+                    <div class="product-marquee__group" @if($duplicate) aria-hidden="true" @endif>
+                        @foreach ($featuredProducts as $product)
+                            <span class="product-marquee__item">
+                                <img src="{{ asset($product->image_path ?: 'og.png') }}" alt="{{ $duplicate ? '' : 'Foto '.$product->name }}" loading="{{ $duplicate ? 'lazy' : 'eager' }}">
+                                <span>{{ strtoupper($product->name) }}</span>
+                                <i aria-hidden="true">✦</i>
+                            </span>
+                        @endforeach
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    @endif
 
     <section class="grid gap-12 border-b border-ink px-6 py-24 md:px-[6vw] lg:grid-cols-[.8fr_1.2fr] lg:py-28">
         <div>
             <p class="section-kicker">CARA KAMI BEKERJA</p>
-            <h2 class="section-title">Dibuat untuk<br><em>ritual Anda.</em></h2>
+            <h2 class="section-title">Tampil cakep<br><em>di mana aja.</em></h2>
             <p class="max-w-md font-display text-[17px] leading-relaxed text-muted">Kursi yang nyaman, konsultasi yang jujur, dan potongan yang disesuaikan dengan karakter rambut Anda.</p>
             <a class="link-button mt-7" href="{{ route('about') }}">Baca cerita kami →</a>
         </div>
@@ -50,8 +64,8 @@
 
     <section class="px-6 py-24 md:px-[6vw]">
         <div class="mb-12 flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
-            <div><p class="section-kicker">TANGAN DI BALIK KARYA</p><h2 class="section-title mb-0">Kenali <em>barber Anda.</em></h2></div>
-            <a class="link-button" href="{{ route('booking') }}">Pilih barber →</a>
+            <div><p class="section-kicker">TANGAN DI BALIK KARYA</p><h2 class="section-title mb-0">Kenali <em>capster Anda.</em></h2></div>
+            <a class="link-button" href="{{ route('booking') }}">Pilih capster →</a>
         </div>
         <div class="grid gap-10 md:grid-cols-3 md:gap-4">
             @foreach ($artists as $index => $artist)

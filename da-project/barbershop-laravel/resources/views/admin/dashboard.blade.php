@@ -58,7 +58,7 @@
                             'created_at' => 'Waktu',
                             'channel' => 'Kategori',
                             'customer_name' => 'Pelanggan',
-                            'barber_name' => 'Barber',
+                            'barber_name' => 'Capster',
                             'transaction_type' => 'Jenis',
                             'status' => 'Proses',
                             'payment_status' => 'Pembayaran',
@@ -86,7 +86,7 @@
                             <td class="px-3 py-4 text-[10px] 2xl:px-4" data-label="Waktu">{{ $order->created_at->translatedFormat('d M Y, H:i') }}</td>
                             <td class="px-3 py-4 text-[10px] font-bold 2xl:px-4" data-label="Kategori">{{ $order->booking_id || $order->channel === 'booking' ? 'Booking' : ($order->channel === 'cashier' ? 'Walk-in / Kasir' : 'Pesanan aplikasi') }}</td>
                             <td class="px-3 py-4 2xl:px-4" data-label="Pelanggan"><a class="text-xs font-bold underline decoration-ink/20 underline-offset-4" href="{{ route('admin.resources.edit', ['resource' => 'orders', 'record' => $order]) }}">#{{ str_pad($order->id, 5, '0', STR_PAD_LEFT) }} · {{ $order->customer_name }}</a></td>
-                            <td class="px-3 py-4 text-[10px] font-bold 2xl:px-4" data-label="Barber">{{ $order->barber_name ?? '—' }}</td>
+                            <td class="px-3 py-4 text-[10px] font-bold 2xl:px-4" data-label="Capster">{{ $order->barber_name ?? '—' }}</td>
                             <td class="px-3 py-4 text-[10px] 2xl:px-4" data-label="Jenis">{{ ['service' => 'Layanan', 'product' => 'Produk', 'mixed' => 'Layanan + produk'][$order->transaction_type] ?? $order->transaction_type }}</td>
                             <td class="px-3 py-4 2xl:px-4" data-label="Proses"><span data-live-order="{{ $order->id }}" class="text-[8px] font-black uppercase tracking-[.1em]">{{ $order->status === 'pending' && $order->booking_id ? 'Akan datang' : ($order->status === 'pending' && $order->payment_status === 'unpaid' ? 'Menunggu bayar' : (['pending' => 'Menunggu', 'ready' => 'Siap diambil', 'completed' => 'Selesai', 'cancelled' => 'Dibatalkan'][$order->status] ?? $order->status)) }}</span></td>
                             <td class="px-3 py-4 2xl:px-4" data-label="Pembayaran"><span data-live-payment-order="{{ $order->id }}" class="inline-flex border px-2 py-1 text-[8px] font-black uppercase tracking-[.1em] {{ $order->payment_status === 'paid' ? 'border-green-600/40 bg-green-50 text-green-700' : 'border-orange/40 bg-orange/10 text-orange' }}">{{ ['unpaid' => 'Belum dibayar', 'paid' => 'Lunas', 'refunded' => 'Dikembalikan'][$order->payment_status] ?? $order->payment_status }}</span></td>

@@ -35,8 +35,8 @@ return [
     'attributes' => [
         'appointment_date' => 'tanggal kunjungan',
         'appointment_time' => 'waktu kunjungan',
-        'artist_id' => 'barber',
-        'barber_id' => 'barber',
+        'artist_id' => 'capster',
+        'barber_id' => 'capster',
         'booking_id' => 'booking',
         'booking_type' => 'jenis booking',
         'cart_json' => 'keranjang',

@@ -36,9 +36,9 @@
 
     <section class="px-6 py-24 md:px-[6vw] md:py-28">
         <div class="grid items-start gap-12 lg:grid-cols-[.9fr_1.1fr]">
-            <div><p class="section-kicker">PENGALAMAN HOMCUTS</p><h2 class="section-title">Datang nyaman.<br><em>Pulang lebih rapi.</em></h2><a class="btn-primary mt-4" href="{{ route('booking') }}">Temui kami di kursi barber <span>↗</span></a></div>
+            <div><p class="section-kicker">PENGALAMAN HOMCUTS</p><h2 class="section-title">Datang nyaman.<br><em>Pulang lebih rapi.</em></h2><a class="btn-primary mt-4" href="{{ route('booking') }}">Temui kami di kursi capster <span>↗</span></a></div>
             <div class="border-t border-ink">
-                @foreach ([['01','Pilih layanan dan barber yang paling sesuai dengan kebutuhan Anda.'],['02','Booking waktu kunjungan atau datang langsung untuk dilayani melalui kasir.'],['03','Diskusikan referensi dan karakter rambut sebelum proses dimulai.'],['04','Pulang dengan potongan rapi serta arahan penataan yang mudah diikuti.']] as $event)
+                @foreach ([['01','Pilih layanan dan capster yang paling sesuai dengan kebutuhan Anda.'],['02','Booking waktu kunjungan atau datang langsung untuk dilayani melalui kasir.'],['03','Diskusikan referensi dan karakter rambut sebelum proses dimulai.'],['04','Pulang dengan potongan rapi serta arahan penataan yang mudah diikuti.']] as $event)
                     <div class="grid grid-cols-[72px_1fr] gap-5 border-b border-ink/20 py-6"><b class="font-display text-xl text-orange">{{ $event[0] }}</b><p class="font-display text-base text-muted">{{ $event[1] }}</p></div>
                 @endforeach
             </div>

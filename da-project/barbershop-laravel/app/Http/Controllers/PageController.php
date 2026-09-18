@@ -16,6 +16,7 @@ class PageController extends Controller
         return view('home', [
             'artists' => Barber::where('is_active', true)->orderBy('sort_order')->get(),
             'services' => Service::where('is_active', true)->orderBy('sort_order')->get(),
+            'featuredProducts' => Product::where('is_active', true)->orderBy('sort_order')->get(),
             'featuredGallery' => GalleryEntry::where('is_published', true)->orderBy('sort_order')->first(),
         ]);
     }
