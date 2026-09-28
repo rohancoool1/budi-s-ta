@@ -10,7 +10,7 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 --protocol=TCP -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -36,7 +36,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    command: ["sh", "-c", "mkdir -p storage/app/public && php artisan storage:link --force && php artisan migrate --force && php artisan view:clear && exec php artisan serve --host=0.0.0.0 --port=8000"]
+    command: ["sh", "-c", "mkdir -p storage/app/public && rm -rf public/storage && php artisan storage:link && php artisan migrate --force && php artisan view:clear && exec php artisan serve --host=0.0.0.0 --port=8000"]
     ports:
       - "8000:8000"
     volumes:

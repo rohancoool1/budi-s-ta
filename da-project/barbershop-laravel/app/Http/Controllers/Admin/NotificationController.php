@@ -34,6 +34,7 @@ class NotificationController extends Controller
                 ->map(fn (Booking $booking) => [
                     'id' => $booking->id,
                     'status' => $booking->status,
+                    'workflow_label' => $booking->workflow_label,
                     'payment_status' => $booking->transaction?->payment_status,
                     'order_id' => $booking->transaction?->id,
                     'total' => $booking->transaction?->total,
@@ -45,6 +46,8 @@ class NotificationController extends Controller
                 ->map(fn (Order $order) => [
                     'id' => $order->id,
                     'status' => $order->status,
+                    'workflow_status' => $order->workflow_status,
+                    'workflow_label' => $order->workflow_label,
                     'payment_status' => $order->payment_status,
                     'booking_id' => $order->booking_id,
                     'booking_status' => $order->booking?->status,

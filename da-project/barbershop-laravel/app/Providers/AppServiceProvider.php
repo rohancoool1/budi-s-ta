@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\Product;
 use App\Models\SiteSetting;
+use App\Support\ServiceSchedule;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -25,13 +26,15 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         View::composer('*', function (ViewInstance $view) {
-            static $siteSettings;
-
-            $siteSettings ??= Schema::hasTable('site_settings')
+            $siteSettings = Schema::hasTable('site_settings')
                 ? SiteSetting::pluck('value', 'key')
                 : collect();
 
             $view->with('siteSettings', $siteSettings);
+            $view->with('serviceDurationMinutes', ServiceSchedule::durationMinutes($siteSettings));
+            $view->with('storeOpenTime', ServiceSchedule::openingTime($siteSettings));
+            $view->with('storeCloseTime', ServiceSchedule::closingTime($siteSettings));
+            $view->with('latestBookingTime', ServiceSchedule::latestStartTime($siteSettings));
         });
 
         View::composer('layouts.app', function (ViewInstance $view) {

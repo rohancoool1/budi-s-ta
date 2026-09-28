@@ -41,7 +41,7 @@ Panel admin mengelola produk, capster, layanan, galeri, booking, pesan pelanggan
 
 Riwayat transaksi menjadi sumber utama catatan keuangan. Setiap booking langsung memiliki transaksi terkait sejak dibuat, bukan baru saat layanan selesai. Penjualan tanpa booking masuk sebagai **Walk-in / Kasir**, sedangkan pesanan produk dari situs masuk sebagai **Pesanan aplikasi**. Status pekerjaan dan status pembayaran tetap dipisahkan agar, misalnya, pesanan yang sudah lunas tetapi belum diambil tetap terlihat sebagai pekerjaan tertunda.
 
-Booking tersedia mulai pukul **07.00** dan harus selesai sebelum toko tutup pukul **22.00**. Waktu mulai terakhir menyesuaikan durasi layanan serta jam kerja masing-masing capster. Sistem menolak jadwal di luar jam kerja dan jadwal yang tumpang tindih, baik dari halaman pelanggan maupun panel admin. Pilihan booking cepat otomatis menggunakan capster aktif pertama yang sedang bertugas dan masih kosong. Slot pembayaran yang belum selesai ditahan sementara dan dilepas kembali saat batas pembayaran habis.
+Jam buka, jam tutup, durasi layanan, dan batas waktu pembayaran dapat diubah melalui **Admin → Pengaturan**. Waktu mulai terakhir dihitung otomatis agar layanan selesai sebelum toko tutup, kemudian dibatasi lagi oleh jam kerja masing-masing capster. Booking yang belum membayar belum mengunci jadwal. Slot baru terkunci setelah DP 50% atau pelunasan diterima; jadwal yang bertabrakan dengan booking ber-DP/lunas atau transaksi walk-in akan ditolak.
 
 Menu **Kasir POS** dapat digunakan untuk:
 
@@ -51,7 +51,7 @@ Menu **Kasir POS** dapat digunakan untuk:
 - mengonfirmasi uang tunai setelah benar-benar diterima;
 - membuka transaksi booking terkait untuk pembayaran atau penyelesaian layanan.
 
-Pesanan produk dari halaman publik tidak memakai alamat atau pengiriman. Stok langsung diamankan saat checkout. Pembayaran tetap **Belum dibayar** sampai kasir menerima uang tunai dan menekan tombol konfirmasi. Setelah lunas, pesanan berubah menjadi **Siap diambil**. Jika batas pembayaran habis, transaksi dibatalkan dan stok dikembalikan satu kali.
+Pesanan produk dari halaman publik tidak memakai alamat atau pengiriman. Stok langsung diamankan saat checkout. Pembayaran tetap **Belum bayar** sampai kasir menerima uang tunai dan menekan tombol konfirmasi. Setelah lunas, status menjadi **Sudah dibayar/menunggu**, kemudian kasir dapat menandainya **Sudah diambil**. Jika batas pembayaran habis, transaksi dibatalkan dan stok dikembalikan satu kali.
 
 Panel admin mempunyai notifikasi database untuk booking baru, pesanan baru, dan pembayaran yang diterima. Ringkasan pendapatan harian/bulanan hanya tampil di dashboard; layar POS fokus pada transaksi kasir.
 

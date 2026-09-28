@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Order;
+use App\Models\Payment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
@@ -33,7 +34,7 @@ class DashboardController extends Controller
                 : $recentOrders->whereNull('booking_id')->where('channel', $source);
         }
 
-        if (in_array($request->input('transaction_payment'), ['unpaid', 'paid', 'refunded'], true)) {
+        if (in_array($request->input('transaction_payment'), ['unpaid', 'partial', 'paid', 'refunded'], true)) {
             $recentOrders->where('payment_status', $request->input('transaction_payment'));
         }
 
@@ -67,17 +68,18 @@ class DashboardController extends Controller
 
         return view('admin.dashboard', [
             'metrics' => [
-                ['label' => 'Booking menunggu pembayaran', 'value' => Booking::where('status', 'pending')->whereHas('transaction', fn ($query) => $query->where('payment_status', 'unpaid')->where('status', '!=', 'cancelled'))->count(), 'resource' => 'bookings', 'query' => ['status' => 'active', 'payment' => 'unpaid']],
-                ['label' => 'Booking aktif / lunas', 'value' => Booking::where('status', 'confirmed')->whereHas('transaction', fn ($query) => $query->where('payment_status', 'paid'))->count(), 'resource' => 'bookings', 'query' => ['status' => 'active', 'payment' => 'paid']],
-                ['label' => 'Tunai perlu dikonfirmasi', 'value' => Order::where('payment_method', 'cash')->where('payment_status', 'unpaid')->where('status', '!=', 'cancelled')->count(), 'resource' => 'orders', 'query' => ['payment' => 'unpaid', 'method' => 'cash']],
-                ['label' => 'Pesanan produk menunggu', 'value' => Order::where('channel', 'online')->where('transaction_type', 'product')->where('status', 'pending')->count(), 'resource' => 'orders', 'query' => ['source' => 'online', 'type' => 'product', 'status' => 'pending']],
-                ['label' => 'Produk siap diambil', 'value' => Order::where('channel', 'online')->where('transaction_type', 'product')->where('status', 'ready')->count(), 'resource' => 'orders', 'query' => ['source' => 'online', 'type' => 'product', 'status' => 'ready']],
-                ['label' => 'Pendapatan hari ini', 'value' => Order::where('payment_status', 'paid')->whereDate('paid_at', today())->sum('total'), 'resource' => 'orders', 'format' => 'money'],
-                ['label' => 'Pendapatan bulan ini', 'value' => Order::where('payment_status', 'paid')->whereBetween('paid_at', [now()->startOfMonth(), now()->endOfMonth()])->sum('total'), 'resource' => 'orders', 'format' => 'money'],
+                ['label' => 'Booking menunggu pembayaran', 'value' => Booking::where('status', 'pending')->whereHas('transaction', fn ($query) => $query->where('payment_status', 'unpaid')->where('status', '!=', 'cancelled'))->count(), 'resource' => 'orders', 'query' => ['tab' => 'booking']],
+                ['label' => 'Booking aktif / lunas', 'value' => Booking::where('status', 'confirmed')->whereHas('transaction', fn ($query) => $query->where('payment_status', 'paid'))->count(), 'resource' => 'orders', 'query' => ['tab' => 'booking']],
+                ['label' => 'Booking sudah DP', 'value' => Booking::where('status', 'deposit')->whereHas('transaction', fn ($query) => $query->where('payment_status', 'partial'))->count(), 'resource' => 'orders', 'query' => ['tab' => 'booking']],
+                ['label' => 'Tunai perlu dikonfirmasi', 'value' => Order::where('payment_method', 'cash')->whereIn('payment_status', ['unpaid', 'partial'])->where('status', '!=', 'cancelled')->count(), 'resource' => 'orders', 'query' => ['method' => 'cash']],
+                ['label' => 'Pesanan produk menunggu', 'value' => Order::where('channel', 'online')->where('transaction_type', 'product')->where('status', 'pending')->count(), 'resource' => 'orders', 'query' => ['tab' => 'product']],
+                ['label' => 'Produk lunas menunggu diambil', 'value' => Order::where('channel', 'online')->where('transaction_type', 'product')->where('payment_status', 'paid')->where('status', 'pending')->count(), 'resource' => 'orders', 'query' => ['tab' => 'product']],
+                ['label' => 'Pendapatan hari ini', 'value' => Payment::where('status', 'paid')->whereDate('paid_at', today())->sum('amount'), 'resource' => 'orders', 'format' => 'money'],
+                ['label' => 'Pendapatan bulan ini', 'value' => Payment::where('status', 'paid')->whereBetween('paid_at', [now()->startOfMonth(), now()->endOfMonth()])->sum('amount'), 'resource' => 'orders', 'format' => 'money'],
                 ['label' => 'Transaksi hari ini', 'value' => Order::whereDate('created_at', today())->count(), 'resource' => 'orders'],
             ],
             'activeBookings' => Booking::with(['service', 'barber', 'transaction'])
-                ->whereIn('status', ['pending', 'confirmed'])
+                ->whereIn('status', ['pending', 'deposit', 'confirmed'])
                 ->orderBy('appointment_date')
                 ->orderBy('appointment_time')
                 ->limit(8)

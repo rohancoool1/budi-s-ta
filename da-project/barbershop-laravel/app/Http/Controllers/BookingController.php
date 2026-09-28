@@ -7,6 +7,7 @@ use App\Services\AdminNotifier;
 use App\Services\BookingAvailabilityService;
 use App\Services\BookingTransactionService;
 use App\Services\PaymentService;
+use App\Support\PaymentPolicy;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -41,7 +42,7 @@ class BookingController extends Controller
         $artist = $data['booking_type'] === 'artist' ? ($data['artist_id'] ?? null) : null;
         $this->ensureFutureTime($data['appointment_date'], $data['appointment_time']);
         $this->payments->expireDuePayments();
-        $expiryMinutes = config('payments.booking_cash_expiry_minutes');
+        $expiryMinutes = PaymentPolicy::expiryMinutes();
         $expiresAt = now()->addMinutes($expiryMinutes);
 
         [$booking, $order] = DB::transaction(function () use ($data, $artist, $expiresAt): array {
@@ -84,7 +85,7 @@ class BookingController extends Controller
         );
 
         return to_route('payments.show', $payment)
-            ->with('success', 'Booking tersimpan. Bayar tunai di kasir agar booking dikonfirmasi.');
+            ->with('success', 'Booking tersimpan. Bayar DP 50% di kasir untuk mengunci jadwal.');
     }
 
     public function availability(Request $request): JsonResponse

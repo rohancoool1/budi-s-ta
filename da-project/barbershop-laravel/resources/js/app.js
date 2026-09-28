@@ -48,12 +48,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const updateBookingTimeLimit = () => {
         if (!bookingForm || !bookingTime) return;
-        const service = bookingForm.querySelector('[name="service_id"]');
-        const duration = Number(service?.selectedOptions[0]?.dataset.duration || 0);
-        const latestMinutes = Math.min((21 * 60) + 30, (22 * 60) - duration);
-        const latest = `${String(Math.floor(latestMinutes / 60)).padStart(2, '0')}:${String(latestMinutes % 60).padStart(2, '0')}`;
+        const duration = Number(bookingForm.dataset.serviceDuration || 45);
+        const opening = bookingForm.dataset.openTime || '07:00';
+        const latest = bookingForm.dataset.latestTime || '21:15';
+        bookingTime.min = opening;
         bookingTime.max = latest;
-        if (bookingTimeHelp) bookingTimeHelp.textContent = `Untuk layanan ini, pilih antara 07.00–${latest.replace(':', '.')}. Waktu juga mengikuti jam kerja capster.`;
+        if (bookingTimeHelp) bookingTimeHelp.textContent = `Estimasi layanan ${duration} menit. Pilih antara ${opening.replace(':', '.')}–${latest.replace(':', '.')}; slot berikutnya dapat dimulai tepat saat layanan sebelumnya selesai.`;
     };
 
     const checkBookingAvailability = () => {
@@ -199,11 +199,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="grid grid-cols-[1fr_auto] items-center">
                         <span class="text-[8px] uppercase tracking-[.1em] text-muted">${escapeHtml(item.category)}</span>
                         <h3 class="col-span-2 font-display text-xl">${escapeHtml(item.name)}</h3>
-                        <b class="text-[10px]">${money.format(item.price)}</b>
+                        <div><b class="text-[10px]">${money.format(item.price)}</b><small class="mt-1 block text-[8px] text-muted">Stok tersedia: ${Number(item.stock)}</small></div>
                         <div class="grid grid-cols-3 items-center border border-ink text-center">
                             <button class="h-8 px-3" type="button" data-cart-change="-1" data-product-id="${Number(item.id)}">−</button>
                             <span class="text-[9px]">${Number(item.quantity)}</span>
-                            <button class="h-8 px-3" type="button" data-cart-change="1" data-product-id="${Number(item.id)}">+</button>
+                            <button class="h-8 px-3 disabled:cursor-not-allowed disabled:opacity-30" type="button" data-cart-change="1" data-product-id="${Number(item.id)}" ${Number(item.quantity) >= Number(item.stock) ? 'disabled' : ''}>+</button>
                         </div>
                     </div>
                 </div>
@@ -226,8 +226,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.classList.remove('overflow-hidden');
     };
 
-    const showCartToast = (productName) => {
-        cartToast.textContent = `${productName} ditambahkan ke keranjang`;
+    const showCartToast = (message) => {
+        cartToast.textContent = message;
         cartToast.classList.remove('hidden');
         clearTimeout(toastTimer);
         toastTimer = setTimeout(() => cartToast.classList.add('hidden'), 1800);
@@ -236,11 +236,15 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.add-product').forEach((button) => button.addEventListener('click', () => {
         const product = JSON.parse(button.dataset.product);
         const existing = cart.find((item) => item.id === product.id);
-        if (existing) existing.quantity = Math.min(10, existing.quantity + 1);
+        if (Number(product.stock) < 1 || (existing && existing.quantity >= Number(product.stock))) {
+            showCartToast(`Stok ${product.name} hanya tersisa ${Number(product.stock)}.`);
+            return;
+        }
+        if (existing) existing.quantity = Math.min(10, Number(product.stock), existing.quantity + 1);
         else cart.push({ ...product, quantity: 1 });
         renderCart();
         if (button.dataset.openCart === 'true') openCart();
-        else showCartToast(product.name);
+        else showCartToast(`${product.name} ditambahkan ke keranjang`);
     }));
 
     cartItems.addEventListener('click', (event) => {
@@ -248,6 +252,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!button) return;
         const product = cart.find((item) => item.id === Number(button.dataset.productId));
         if (!product) return;
+        if (Number(button.dataset.cartChange) > 0 && product.quantity >= Number(product.stock)) {
+            showCartToast(`Stok ${product.name} hanya tersisa ${Number(product.stock)}.`);
+            return;
+        }
         product.quantity = Math.min(10, Number(product.stock) || 10, product.quantity + Number(button.dataset.cartChange));
         cart = cart.filter((item) => item.quantity > 0);
         renderCart();
@@ -258,6 +266,12 @@ document.addEventListener('DOMContentLoaded', () => {
     backdrop.addEventListener('click', closeCart);
     document.querySelector('#open-checkout').addEventListener('click', () => {
         if (!cart.length) return;
+        const insufficient = cart.find((item) => item.quantity > Number(cartProductById.get(Number(item.id))?.stock || 0));
+        if (insufficient) {
+            const remaining = Number(cartProductById.get(Number(insufficient.id))?.stock || 0);
+            showCartToast(`Stok ${insufficient.name} hanya tersisa ${remaining}. Kurangi jumlah sebelum checkout.`);
+            return;
+        }
         closeCart();
         cartJson.value = JSON.stringify(cart.map(({ id, quantity }) => ({ id, quantity })));
         checkoutModal.classList.remove('hidden');
@@ -317,10 +331,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const bookingService = document.querySelector('#booking-service');
         const bookingQueue = document.querySelector('#booking-queue');
         const bookingScheduleNotice = document.querySelector('#booking-schedule-notice');
-        const statusLabels = {
-            pending: 'Menunggu pembayaran', paid: 'Pembayaran berhasil', expired: 'Waktu pembayaran habis',
-            failed: 'Pembayaran gagal', cancelled: 'Pembayaran dibatalkan', review: 'Perlu pemeriksaan admin', refunded: 'Dana dikembalikan',
-        };
         let statusRequestRunning = false;
         let statusTimer;
 
@@ -348,28 +358,32 @@ document.addEventListener('DOMContentLoaded', () => {
         const applyPaymentStatus = (result) => {
             applyBookingInformation(result.booking);
             paymentScreen.dataset.currentStatus = result.status;
-            const label = statusLabels[result.status] || result.status;
+            const label = result.workflow_label || result.status;
             title.textContent = label;
             badge.textContent = label;
-            const paid = result.status === 'paid';
-            badge.classList.toggle('border-green-600/40', paid);
-            badge.classList.toggle('bg-green-50', paid);
-            badge.classList.toggle('text-green-700', paid);
-            badge.classList.toggle('border-orange/40', !paid);
-            badge.classList.toggle('bg-orange/10', !paid);
-            badge.classList.toggle('text-orange', !paid);
+            const fullyPaid = result.payment_status === 'paid';
+            const depositPaid = result.payment_status === 'partial';
+            const paymentFinished = result.status !== 'pending';
+            badge.classList.toggle('border-green-600/40', fullyPaid);
+            badge.classList.toggle('bg-green-50', fullyPaid);
+            badge.classList.toggle('text-green-700', fullyPaid);
+            badge.classList.toggle('border-orange/40', !fullyPaid);
+            badge.classList.toggle('bg-orange/10', !fullyPaid);
+            badge.classList.toggle('text-orange', !fullyPaid);
             pendingPanel.classList.toggle('hidden', result.status !== 'pending');
             finishedPanel.classList.toggle('hidden', result.status === 'pending');
-            resultIcon.textContent = paid ? '✓' : '!';
-            resultIcon.classList.toggle('bg-sage', paid);
-            resultIcon.classList.toggle('bg-orange/15', !paid);
-            resultIcon.classList.toggle('text-orange', !paid);
+            resultIcon.textContent = paymentFinished ? '✓' : '!';
+            resultIcon.classList.toggle('bg-sage', fullyPaid);
+            resultIcon.classList.toggle('bg-orange/15', !fullyPaid);
+            resultIcon.classList.toggle('text-orange', !fullyPaid);
 
-            if (paid && paymentScreen.dataset.isBooking === 'true') {
+            if (depositPaid && paymentScreen.dataset.isBooking === 'true') {
+                resultMessage.textContent = `DP 50% sudah diterima. Jadwal Anda telah dikunci. Sisa pembayaran ${money.format(result.remaining_amount || 0)} dibayar di kasir sebelum layanan diselesaikan.`;
+            } else if (fullyPaid && paymentScreen.dataset.isBooking === 'true') {
                 resultMessage.textContent = 'Pembayaran sudah dikonfirmasi kasir. Booking Anda aktif dan jadwal telah diamankan.';
-            } else if (paid && paymentScreen.dataset.isProductOrder === 'true') {
+            } else if (fullyPaid && paymentScreen.dataset.isProductOrder === 'true') {
                 resultMessage.textContent = 'Pembayaran sudah dikonfirmasi kasir. Pesanan siap diproses dan diambil di barbershop.';
-            } else if (paid) {
+            } else if (fullyPaid) {
                 resultMessage.textContent = 'Pembayaran tunai telah dikonfirmasi dan tercatat pada transaksi.';
             } else if (result.status !== 'pending') {
                 resultMessage.textContent = 'Transaksi tidak lagi aktif. Silakan buat pesanan baru atau hubungi admin.';

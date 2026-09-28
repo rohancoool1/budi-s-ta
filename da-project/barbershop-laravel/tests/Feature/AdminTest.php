@@ -8,6 +8,7 @@ use App\Models\GalleryEntry;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Service;
+use App\Models\SiteSetting;
 use App\Models\User;
 use App\Support\AdminResources;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -45,7 +46,7 @@ class AdminTest extends TestCase
             ->assertSee('Booking aktif / lunas')
             ->assertSee('Pesanan produk menunggu')
             ->assertSee('Tunai perlu dikonfirmasi')
-            ->assertSee('Produk siap diambil')
+            ->assertSee('Produk lunas menunggu diambil')
             ->assertSee('Pendapatan hari ini')
             ->assertSee('Pendapatan bulan ini')
             ->assertSee('Transaksi terbaru')
@@ -138,9 +139,11 @@ class AdminTest extends TestCase
             ->assertSee('refreshPageRegions', false);
 
         $this->actingAs($admin)
-            ->get(route('admin.resources.index', ['resource' => 'bookings']))
+            ->get(route('admin.resources.index', ['resource' => 'orders']))
             ->assertOk()
-            ->assertSee('data-live-region="resource-table"', false);
+            ->assertSee('data-live-region="transaction-booking"', false)
+            ->assertSee('data-live-region="transaction-product"', false)
+            ->assertSee('data-live-region="transaction-walkin"', false);
 
         $this->actingAs($admin)
             ->get(route('admin.pos.create'))
@@ -154,9 +157,10 @@ class AdminTest extends TestCase
         $keys = array_column($navigation, 'key');
         $highlighted = collect($navigation)->where('highlighted', true)->pluck('key')->all();
 
-        $this->assertSame(['bookings', 'orders'], array_slice($keys, 0, 2));
+        $this->assertSame('orders', $keys[0]);
+        $this->assertNotContains('bookings', $keys);
         $this->assertSame(array_search('services', $keys, true) + 1, array_search('products', $keys, true));
-        $this->assertSame(['bookings', 'orders'], $highlighted);
+        $this->assertSame(['orders'], $highlighted);
     }
 
     public function test_admin_uses_capster_label_and_friendly_resource_url(): void
@@ -190,7 +194,7 @@ class AdminTest extends TestCase
     {
         $admin = User::factory()->create(['is_admin' => true]);
 
-        foreach (AdminResources::keys() as $resource) {
+        foreach (array_diff(AdminResources::keys(), ['bookings', 'orders']) as $resource) {
             $this->actingAs($admin)
                 ->get(route('admin.resources.index', ['resource' => $resource]))
                 ->assertOk()
@@ -201,6 +205,22 @@ class AdminTest extends TestCase
                 ->assertDontSee('name="direction"', false)
                 ->assertDontSee('Klik judul kolom untuk mengurutkan');
         }
+
+        $this->actingAs($admin)
+            ->get(route('admin.resources.index', ['resource' => 'orders']))
+            ->assertOk()
+            ->assertSee('data-transaction-tab="booking"', false)
+            ->assertSee('data-transaction-tab="product"', false)
+            ->assertSee('data-transaction-tab="walkin"', false)
+            ->assertSee('data-admin-sort', false)
+            ->assertSee('data-sort-region="transaction-booking"', false)
+            ->assertSee('data-sort-region="transaction-product"', false)
+            ->assertSee('data-sort-region="transaction-walkin"', false)
+            ->assertSee('admin-data-table', false);
+
+        $this->actingAs($admin)
+            ->get(route('admin.resources.index', ['resource' => 'bookings']))
+            ->assertRedirect(route('admin.resources.index', ['resource' => 'orders', 'tab' => 'booking']));
 
         Product::query()->update(['is_active' => false]);
         $visible = Product::query()->firstOrFail();
@@ -221,7 +241,7 @@ class AdminTest extends TestCase
     {
         $admin = User::factory()->create(['is_admin' => true]);
 
-        foreach (AdminResources::keys() as $resource) {
+        foreach (array_diff(AdminResources::keys(), ['bookings', 'orders']) as $resource) {
             $definition = AdminResources::get($resource);
 
             foreach ($definition['columns'] as $column) {
@@ -235,7 +255,21 @@ class AdminTest extends TestCase
             }
         }
 
-        foreach (['created_at', 'channel', 'customer_name', 'barber_name', 'transaction_type', 'status', 'payment_status', 'total'] as $sort) {
+        foreach (AdminResources::get('bookings')['columns'] as $column) {
+            $sort = $column['sort'] ?? $column['key'];
+            foreach (['asc', 'desc'] as $direction) {
+                $this->actingAs($admin)
+                    ->get(route('admin.resources.index', [
+                        'resource' => 'orders',
+                        'tab' => 'booking',
+                        'booking_sort' => $sort,
+                        'booking_direction' => $direction,
+                    ]))
+                    ->assertOk();
+            }
+        }
+
+        foreach (['created_at', 'channel', 'customer_name', 'barber_name', 'transaction_type', 'status', 'total'] as $sort) {
             $this->actingAs($admin)
                 ->get(route('admin.dashboard', ['transaction_sort' => $sort, 'transaction_direction' => 'asc']))
                 ->assertOk();
@@ -327,7 +361,6 @@ class AdminTest extends TestCase
         $this->actingAs($admin)->post(route('admin.resources.store', ['resource' => 'services']), [
             'name' => 'Skin fade',
             'slug' => 'skin-fade-duplikat',
-            'duration_minutes' => 60,
             'price' => 210000,
             'description' => 'Nama layanan ini sudah digunakan.',
             'sort_order' => 20,
@@ -369,6 +402,23 @@ class AdminTest extends TestCase
 
         $gallery = GalleryEntry::where('style', 'Model Uji')->firstOrFail();
         Storage::disk('public')->assertExists(str($gallery->image_path)->after('storage/')->toString());
+
+        $storefront = SiteSetting::where('key', 'storefront_image')->firstOrFail();
+        $this->actingAs($admin)
+            ->get(route('admin.resources.edit', ['resource' => 'settings', 'record' => $storefront]))
+            ->assertOk()
+            ->assertSee('Foto bagian depan toko')
+            ->assertSee('data-image-editor', false);
+
+        $this->actingAs($admin)->put(route('admin.resources.update', ['resource' => 'settings', 'record' => $storefront]), [
+            'key' => 'storefront_image',
+            'group' => 'media',
+            'image_upload' => $this->fakeImage('toko.png'),
+        ])->assertRedirect(route('admin.resources.index', ['resource' => 'settings']));
+
+        $storefront->refresh();
+        Storage::disk('public')->assertExists(str($storefront->value)->after('storage/')->toString());
+        $this->get(route('home'))->assertOk()->assertSee(asset($storefront->value));
     }
 
     public function test_photo_resources_show_upload_fields_in_admin(): void
@@ -381,7 +431,10 @@ class AdminTest extends TestCase
                 ->assertOk()
                 ->assertSee('enctype="multipart/form-data"', false)
                 ->assertSee('name="image_upload"', false)
-                ->assertSee('type="file"', false);
+                ->assertSee('type="file"', false)
+                ->assertSee('data-image-editor', false)
+                ->assertSee('data-crop-aspect=', false)
+                ->assertSee('Terapkan crop');
         }
     }
 

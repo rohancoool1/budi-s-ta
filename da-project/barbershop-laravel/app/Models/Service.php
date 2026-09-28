@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\ServiceSchedule;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -21,7 +22,14 @@ class Service extends Model
 
     protected function details(): Attribute
     {
-        return Attribute::get(fn () => $this->duration_minutes.' min · Rp '.number_format($this->price / 1000, 0).'K');
+        return Attribute::get(fn () => 'Rp '.number_format($this->price / 1000, 0).'K');
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (Service $service): void {
+            $service->duration_minutes = ServiceSchedule::durationMinutes();
+        });
     }
 
     public function bookings(): HasMany

@@ -7,15 +7,11 @@
     @php
         $isBooking = (bool) $payment->order->booking_id;
         $isProductOrder = $payment->order->channel === 'online' && $payment->order->transaction_type === 'product';
-        $statusLabels = [
-            'pending' => 'Menunggu pembayaran',
-            'paid' => 'Pembayaran berhasil',
-            'expired' => 'Waktu pembayaran habis',
-            'failed' => 'Pembayaran gagal',
-            'cancelled' => 'Pembayaran dibatalkan',
-            'review' => 'Perlu pemeriksaan admin',
-            'refunded' => 'Dana dikembalikan',
-        ];
+        $workflowLabel = $payment->order->workflow_label;
+        $contactPhone = $siteSettings->get('phone', '0882-0207-03600');
+        $contactDigits = preg_replace('/\D+/', '', $contactPhone);
+        if (str_starts_with($contactDigits, '0')) $contactDigits = '62'.substr($contactDigits, 1);
+        $contactWhatsapp = 'https://wa.me/'.$contactDigits;
     @endphp
 
     <section class="min-h-[calc(100vh-76px)] bg-cream px-4 py-10 md:px-8 md:py-16">
@@ -42,7 +38,11 @@
                         <div class="flex justify-between gap-5"><span class="text-white/55">Capster</span><b id="booking-barber">{{ $payment->order->booking?->barber?->name ?? $payment->order->booking?->artist_id ?? 'Belum ditentukan' }}</b></div>
                         <div class="flex justify-between gap-5"><span class="text-white/55">Layanan</span><b id="booking-service" class="text-right">{{ $payment->order->booking?->service?->name ?? $payment->order->booking?->service_id }}</b></div>
                     @endif
-                    <div class="flex justify-between gap-5 border-t border-white/20 pt-4"><span class="text-white/55">Total</span><b class="font-display text-2xl">Rp {{ number_format($payment->amount, 0, ',', '.') }}</b></div>
+                    <div class="flex justify-between gap-5 border-t border-white/20 pt-4"><span class="text-white/55">Total</span><b class="font-display text-2xl">Rp {{ number_format($payment->order->total, 0, ',', '.') }}</b></div>
+                    @if($payment->order->payment_status === 'partial')
+                        <div class="flex justify-between gap-5"><span class="text-white/55">DP diterima</span><b>Rp {{ number_format($payment->order->paid_amount, 0, ',', '.') }}</b></div>
+                        <div class="flex justify-between gap-5"><span class="text-white/55">Sisa</span><b>Rp {{ number_format($payment->order->remaining_amount, 0, ',', '.') }}</b></div>
+                    @endif
                 </div>
                 <p class="mt-10 break-all text-[8px] uppercase tracking-[.08em] text-white/35">Kode: {{ $payment->reference }}</p>
             </aside>
@@ -62,8 +62,8 @@
                 @endif
 
                 <div class="flex items-start justify-between gap-5">
-                    <div><p class="section-kicker">{{ $payment->method === 'cash' ? 'TUNAI' : strtoupper($payment->method).' · RIWAYAT' }}</p><h2 id="payment-title" class="mt-2 font-display text-3xl">{{ $statusLabels[$payment->status] ?? $payment->status }}</h2></div>
-                    <span id="payment-status-badge" class="border px-3 py-2 text-[8px] font-black uppercase tracking-[.1em] {{ $payment->status === 'paid' ? 'border-green-600/40 bg-green-50 text-green-700' : 'border-orange/40 bg-orange/10 text-orange' }}">{{ $statusLabels[$payment->status] ?? $payment->status }}</span>
+                    <div><p class="section-kicker">INVOICE · TUNAI</p><h2 id="payment-title" class="mt-2 font-display text-3xl">{{ $workflowLabel }}</h2></div>
+                    <span id="payment-status-badge" class="border px-3 py-2 text-[8px] font-black uppercase tracking-[.1em] {{ $payment->order->payment_status === 'paid' ? 'border-green-600/40 bg-green-50 text-green-700' : 'border-orange/40 bg-orange/10 text-orange' }}">{{ $workflowLabel }}</span>
                 </div>
 
                 <div id="payment-pending" class="{{ $payment->status === 'pending' ? '' : 'hidden' }}">
@@ -76,7 +76,12 @@
                             @else
                                 Tunjukkan kode transaksi di atas.
                             @endif
-                            Kasir akan mengonfirmasi transaksi setelah uang diterima. Status@if($isBooking) dan informasi booking@endif pada halaman ini diperbarui otomatis.
+                            Kasir akan mengonfirmasi transaksi setelah uang diterima.
+                            @if($isBooking)
+                                Jadwal belum terkunci selama pembayaran masih “Belum bayar”. Bayar DP 50% atau lunasi di kasir sebelum waktu habis; status halaman ini diperbarui otomatis.
+                            @else
+                                Status pesanan pada halaman ini akan diperbarui otomatis.
+                            @endif
                         </p>
                     </div>
 
@@ -87,19 +92,26 @@
                 </div>
 
                 <div id="payment-finished" class="{{ $payment->status === 'pending' ? 'hidden' : '' }} mt-8">
-                    <div id="payment-result-icon" class="grid size-16 place-items-center rounded-full {{ $payment->status === 'paid' ? 'bg-sage' : 'bg-orange/15 text-orange' }} font-display text-3xl">{{ $payment->status === 'paid' ? '✓' : '!' }}</div>
+                    <div id="payment-result-icon" class="grid size-16 place-items-center rounded-full {{ $payment->order->payment_status === 'paid' ? 'bg-sage' : 'bg-orange/15 text-orange' }} font-display text-3xl">{{ in_array($payment->order->payment_status, ['partial', 'paid'], true) ? '✓' : '!' }}</div>
                     <p id="payment-result-message" class="mt-5 text-sm leading-7 text-muted">
-                        @if ($payment->status === 'paid' && $isBooking)
+                        @if ($payment->order->payment_status === 'partial' && $isBooking)
+                            DP 50% sudah diterima dan jadwal telah dikunci. Sisa Rp {{ number_format($payment->order->remaining_amount, 0, ',', '.') }} dibayar di kasir sebelum layanan diselesaikan.
+                        @elseif ($payment->order->payment_status === 'paid' && $isBooking)
                             Booking sudah aktif. Datang sesuai jadwal yang tercantum.
-                        @elseif ($payment->status === 'paid' && $isProductOrder)
-                            Pembayaran lunas dan pesanan siap diambil di barbershop.
-                        @elseif ($payment->status === 'paid')
+                        @elseif ($payment->order->payment_status === 'paid' && $isProductOrder)
+                            Pembayaran sudah diterima. Pesanan sedang menunggu untuk diambil di barbershop.
+                        @elseif ($payment->order->payment_status === 'paid')
                             Pembayaran telah tercatat di transaksi kasir.
                         @else
                             Transaksi tidak lagi aktif. Silakan buat pesanan baru atau hubungi admin.
                         @endif
                     </p>
                     <a class="btn-primary mt-6" href="{{ $isBooking ? route('booking') : ($isProductOrder ? route('shop') : (auth()->check() ? route('admin.resources.edit', ['resource' => 'orders', 'record' => $payment->order]) : route('home'))) }}">{{ $isBooking ? 'Kembali ke booking' : ($isProductOrder ? 'Kembali ke toko' : 'Lihat transaksi') }} <span>→</span></a>
+                </div>
+
+                <div class="mt-8 grid gap-3 border-t border-ink/15 pt-6 sm:grid-cols-2">
+                    <a class="border border-ink bg-ink px-5 py-4 text-center text-[8px] font-black uppercase tracking-[.12em] text-white" href="{{ route('payments.invoice', $payment) }}">Unduh invoice PDF ↓</a>
+                    <a class="border border-ink px-5 py-4 text-center text-[8px] font-black uppercase tracking-[.12em]" href="{{ $contactWhatsapp }}" target="_blank" rel="noopener">Chat WhatsApp · {{ $contactPhone }} ↗</a>
                 </div>
             </div>
         </div>

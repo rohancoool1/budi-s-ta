@@ -71,6 +71,56 @@ class Order extends Model
             ?? $this->items->firstWhere('barber_id', '!=', null)?->barber?->name;
     }
 
+    public function getWorkflowStatusAttribute(): string
+    {
+        if ($this->status === 'cancelled') {
+            return 'cancelled';
+        }
+
+        if ($this->payment_status === 'partial') {
+            return 'deposit';
+        }
+
+        if ($this->payment_status !== 'paid') {
+            return 'unpaid';
+        }
+
+        if ($this->transaction_type === 'product') {
+            return $this->status === 'completed' ? 'collected' : 'waiting';
+        }
+
+        if ($this->booking_id || $this->channel === 'booking') {
+            return $this->status === 'completed' ? 'completed' : 'upcoming';
+        }
+
+        return $this->status === 'completed' ? 'completed' : 'upcoming';
+    }
+
+    public function getWorkflowLabelAttribute(): string
+    {
+        return match ($this->workflow_status) {
+            'cancelled' => 'Dibatalkan',
+            'unpaid' => 'Belum bayar',
+            'deposit' => 'Sudah DP 50%',
+            'waiting' => 'Sudah dibayar / menunggu',
+            'collected' => 'Sudah diambil',
+            'completed' => 'Selesai',
+            default => 'Lunas / akan datang',
+        };
+    }
+
+    public function getPaidAmountAttribute(): int
+    {
+        $payments = $this->relationLoaded('payments') ? $this->payments : $this->payments()->get();
+
+        return (int) $payments->where('status', 'paid')->sum('amount');
+    }
+
+    public function getRemainingAmountAttribute(): int
+    {
+        return max(0, (int) $this->total - $this->paid_amount);
+    }
+
     protected function casts(): array
     {
         return [

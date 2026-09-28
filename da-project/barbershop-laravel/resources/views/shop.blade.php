@@ -38,6 +38,7 @@
                         <span class="text-[7px] font-bold tracking-[.12em] text-muted">{{ strtoupper($product['category']) }} · {{ $product['size'] }}</span>
                         <h2 class="my-2 font-display text-2xl">{{ $product['name'] }}</h2>
                         <p class="mb-4 text-[10px] leading-relaxed text-muted">{{ $product['description'] }}</p>
+                        <p class="mb-3 text-[8px] font-black uppercase tracking-[.1em] {{ $product['stock'] <= 5 ? 'text-orange' : 'text-muted' }}">{{ $product['stock'] > 0 ? 'Stok tersedia: '.$product['stock'] : 'Stok habis' }}</p>
                         <div class="flex items-center justify-between"><b class="text-xs">Rp {{ number_format($product['price'], 0, ',', '.') }}</b>@if ($product['stock'] > 0)<button class="add-product link-button" type="button" data-product='@json($cartProduct)' data-open-cart="true">Beli sekarang →</button>@else<span class="text-[8px] font-black uppercase tracking-[.1em] text-muted">Tidak tersedia</span>@endif</div>
                     </div>
                 </article>

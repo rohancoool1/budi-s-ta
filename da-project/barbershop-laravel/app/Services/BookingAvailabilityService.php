@@ -6,6 +6,7 @@ use App\Models\Barber;
 use App\Models\Booking;
 use App\Models\Order;
 use App\Models\Service;
+use App\Support\ServiceSchedule;
 use Carbon\CarbonImmutable;
 use Illuminate\Validation\ValidationException;
 
@@ -21,7 +22,6 @@ class BookingAvailabilityService
         ?string $barberSlug = null,
         ?int $ignoreBookingId = null,
         bool $lock = false,
-        ?int $durationMinutes = null,
     ): array {
         $service = Service::query()->where('slug', $serviceSlug)->where('is_active', true)->first();
 
@@ -34,11 +34,12 @@ class BookingAvailabilityService
             $date.' '.$time,
             config('app.timezone'),
         );
-        $durationMinutes ??= $service->duration_minutes;
+        $scheduleSettings = ServiceSchedule::settings();
+        $durationMinutes = ServiceSchedule::durationMinutes($scheduleSettings);
         $endsAt = $startsAt->addMinutes($durationMinutes);
-        $shopOpen = $this->timeOnDate($startsAt, config('barbershop.booking_open_time'));
-        $lastStart = $this->timeOnDate($startsAt, config('barbershop.booking_last_start_time'));
-        $shopClose = $this->timeOnDate($startsAt, config('barbershop.booking_close_time'));
+        $shopOpen = $this->timeOnDate($startsAt, ServiceSchedule::openingTime($scheduleSettings));
+        $lastStart = $this->timeOnDate($startsAt, ServiceSchedule::latestStartTime($scheduleSettings));
+        $shopClose = $this->timeOnDate($startsAt, ServiceSchedule::closingTime($scheduleSettings));
 
         if ($startsAt->lt($shopOpen) || $startsAt->gt($lastStart)) {
             throw ValidationException::withMessages([
@@ -72,8 +73,8 @@ class BookingAvailabilityService
         $hasBarberOnShift = false;
 
         foreach ($barbers as $barber) {
-            $barberStarts = $this->timeOnDate($startsAt, $barber->work_start_time ?: config('barbershop.booking_open_time'));
-            $barberEnds = $this->timeOnDate($startsAt, $barber->work_end_time ?: config('barbershop.booking_close_time'));
+            $barberStarts = $this->timeOnDate($startsAt, $barber->work_start_time ?: ServiceSchedule::openingTime($scheduleSettings));
+            $barberEnds = $this->timeOnDate($startsAt, $barber->work_end_time ?: ServiceSchedule::closingTime($scheduleSettings));
 
             if ($startsAt->lt($barberStarts) || $endsAt->gt($barberEnds)) {
                 continue;
@@ -148,8 +149,14 @@ class BookingAvailabilityService
         $query = Order::query()
             ->whereIn('transaction_type', ['service', 'mixed'])
             ->where('status', '!=', 'cancelled')
+            ->where(function ($query): void {
+                $query->whereNull('booking_id')
+                    ->orWhereIn('payment_status', ['partial', 'paid']);
+            })
             ->whereNotNull('service_starts_at')
             ->where('service_starts_at', '<', $endsAt)
+            // Interval yang bersebelahan tidak bertabrakan: layanan
+            // 09.00–09.45 membuat waktu 09.45 langsung tersedia.
             ->where('service_ends_at', '>', $startsAt)
             ->when($ignoreBookingId, fn ($query) => $query->where(function ($query) use ($ignoreBookingId): void {
                 $query->whereNull('booking_id')->orWhere('booking_id', '!=', $ignoreBookingId);

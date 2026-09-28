@@ -7,7 +7,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="icon" type="image/jpeg" href="{{ asset('homcuts-logo.jpg') }}">
     <title>@yield('title', 'Dashboard') · HOMCUTS Admin</title>
-    @vite(['resources/css/app.css'])
+    @vite(['resources/css/app.css', 'resources/js/admin-image-editor.js'])
 </head>
 <body class="min-h-screen overflow-x-hidden bg-[#f3f0e8] text-ink antialiased">
     @php
@@ -201,32 +201,45 @@
             });
         };
 
-        const updateBadge = (element, paid) => {
+        const updateBadge = (element, status) => {
             if (!element) return;
-            element.textContent = paid ? 'Lunas' : 'Belum dibayar';
+            const paid = status === 'paid';
+            element.textContent = status === 'partial' ? 'Sudah DP 50%' : (paid ? 'Lunas' : 'Belum dibayar');
             ['border-green-600/40', 'bg-green-50', 'text-green-700'].forEach((name) => element.classList.toggle(name, paid));
             ['border-orange/40', 'bg-orange/10', 'text-orange'].forEach((name) => element.classList.toggle(name, !paid));
         };
 
         const applyOrderStatus = (order) => {
-            document.querySelectorAll(`[data-live-payment-order="${order.id}"]`).forEach((element) => updateBadge(element, order.payment_status === 'paid'));
-            const labels = { pending: 'Menunggu', ready: 'Siap diambil', completed: 'Selesai', cancelled: 'Dibatalkan' };
+            document.querySelectorAll(`[data-live-payment-order="${order.id}"]`).forEach((element) => updateBadge(element, order.payment_status));
             document.querySelectorAll(`[data-live-order="${order.id}"]`).forEach((element) => {
-                element.textContent = labels[order.status] || order.status;
+                element.textContent = order.workflow_label || order.status;
+            });
+            document.querySelectorAll(`[data-order-status-select="${order.id}"]`).forEach((select) => {
+                select.value = order.status === 'completed'
+                    ? 'completed'
+                    : (order.status === 'cancelled' ? 'cancelled' : (order.payment_status === 'partial' ? 'deposit' : (order.payment_status === 'paid' ? 'paid' : 'pending')));
             });
             if (order.payment_status === 'paid' || order.status === 'cancelled') {
                 document.querySelectorAll(`[data-confirm-payment-for="${order.id}"]`).forEach((form) => form.remove());
                 document.querySelectorAll(`[data-pending-payment-card="${order.id}"]`).forEach((card) => card.remove());
             }
+            if (order.payment_status !== 'unpaid' || order.status === 'cancelled') {
+                document.querySelectorAll(`[data-confirm-deposit-for="${order.id}"]`).forEach((form) => form.remove());
+            }
+            if (order.status === 'completed' || order.status === 'cancelled') {
+                document.querySelectorAll(`[data-complete-for="${order.id}"]`).forEach((form) => form.remove());
+            }
         };
 
         const applyBookingStatus = (booking) => {
-            const labels = { pending: 'Menunggu pembayaran', confirmed: 'Dikonfirmasi', completed: 'Selesai', cancelled: 'Dibatalkan' };
             document.querySelectorAll(`[data-live-booking="${booking.id}"]`).forEach((element) => {
-                element.textContent = labels[booking.status] || booking.status;
+                element.textContent = booking.workflow_label || booking.status;
+            });
+            document.querySelectorAll(`[data-booking-status-select="${booking.id}"]`).forEach((select) => {
+                select.value = booking.status;
             });
             if (booking.order_id) {
-                document.querySelectorAll(`[data-live-payment-order="${booking.order_id}"]`).forEach((element) => updateBadge(element, booking.payment_status === 'paid'));
+                document.querySelectorAll(`[data-live-payment-order="${booking.order_id}"]`).forEach((element) => updateBadge(element, booking.payment_status));
             }
         };
 
@@ -342,6 +355,43 @@
                 });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.message || 'Pembayaran belum dapat dikonfirmasi.');
+                applyOrderStatus(data.order);
+                if (data.booking) applyBookingStatus({ ...data.booking, order_id: data.order.id, payment_status: data.order.payment_status });
+                refresh();
+                refreshPageRegions();
+            } catch (error) {
+                window.alert(error.message);
+                button.disabled = false;
+                button.textContent = originalText;
+            } finally {
+                mutationRunning = false;
+            }
+        });
+
+        document.addEventListener('submit', async (event) => {
+            const form = event.target.closest('[data-deposit-confirm-form], [data-complete-order-form]');
+            if (!form) return;
+            event.preventDefault();
+            const isDeposit = form.matches('[data-deposit-confirm-form]');
+            const confirmation = isDeposit
+                ? 'DP 50% sudah benar-benar diterima dari pelanggan?'
+                : 'Layanan atau pesanan ini sudah benar-benar selesai?';
+            if (!window.confirm(confirmation)) return;
+
+            mutationRunning = true;
+            const button = form.querySelector('button[type="submit"]');
+            const originalText = button.textContent;
+            button.disabled = true;
+            button.textContent = 'Menyimpan…';
+
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': csrf, Accept: 'application/json' },
+                    body: new FormData(form),
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || 'Status transaksi belum dapat diperbarui.');
                 applyOrderStatus(data.order);
                 if (data.booking) applyBookingStatus({ ...data.booking, order_id: data.order.id, payment_status: data.order.payment_status });
                 refresh();

@@ -85,6 +85,200 @@
         background-repeat: no-repeat;
     }
 
+    .image-editor {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: grid;
+        place-items: center;
+        padding: 1rem;
+    }
+
+    .image-editor.hidden { display: none; }
+
+    .image-editor__backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgb(23 23 20 / 82%);
+        backdrop-filter: blur(4px);
+    }
+
+    .image-editor__panel {
+        position: relative;
+        display: flex;
+        max-height: calc(100vh - 2rem);
+        width: min(980px, 100%);
+        flex-direction: column;
+        overflow: hidden;
+        border: 1px solid #171714;
+        background: #f8f6ef;
+        box-shadow: 12px 12px 0 rgb(239 91 45 / 80%);
+    }
+
+    .image-editor__header,
+    .image-editor__footer {
+        display: flex;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid rgb(23 23 20 / 15%);
+    }
+
+    .image-editor__header h2 {
+        margin-top: .25rem;
+        font-family: var(--font-display, Georgia, serif);
+        font-size: clamp(1.5rem, 4vw, 2.25rem);
+        line-height: 1;
+    }
+
+    .image-editor__eyebrow,
+    .image-editor__controls legend {
+        font-size: .5rem;
+        font-weight: 900;
+        letter-spacing: .14em;
+        text-transform: uppercase;
+        color: #ef5b2d;
+    }
+
+    .image-editor__close {
+        display: grid;
+        height: 2.5rem;
+        width: 2.5rem;
+        flex-shrink: 0;
+        place-items: center;
+        border: 1px solid #171714;
+        font-size: 1.5rem;
+        line-height: 1;
+    }
+
+    .image-editor__body {
+        display: grid;
+        min-height: 0;
+        overflow-y: auto;
+    }
+
+    .image-editor__stage {
+        --editor-aspect: 1;
+        position: relative;
+        display: grid;
+        min-height: 280px;
+        place-items: center;
+        overflow: hidden;
+        padding: 1rem;
+        background: #242420;
+    }
+
+    .image-editor__stage canvas {
+        display: block;
+        max-height: min(58vh, 620px);
+        max-width: 100%;
+        width: auto;
+        aspect-ratio: var(--editor-aspect);
+        cursor: grab;
+        border: 1px solid rgb(255 255 255 / 80%);
+        box-shadow: 0 0 0 9999px rgb(0 0 0 / 20%);
+        touch-action: none;
+    }
+
+    .image-editor__stage canvas.is-dragging { cursor: grabbing; }
+
+    .image-editor__drag-hint {
+        pointer-events: none;
+        position: absolute;
+        bottom: 1.6rem;
+        left: 50%;
+        translate: -50% 0;
+        background: rgb(23 23 20 / 78%);
+        padding: .45rem .65rem;
+        color: white;
+        font-size: .5rem;
+        font-weight: 900;
+        letter-spacing: .1em;
+        text-transform: uppercase;
+    }
+
+    .image-editor__controls {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        padding: 1.25rem;
+        border-top: 1px solid rgb(23 23 20 / 15%);
+    }
+
+    .image-editor__ratio-list,
+    .image-editor__tool-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .45rem;
+        margin-top: .65rem;
+    }
+
+    .image-editor__ratio-list button,
+    .image-editor__tool-row button {
+        min-height: 2.4rem;
+        border: 1px solid rgb(23 23 20 / 35%);
+        padding: .5rem .7rem;
+        font-size: .55rem;
+        font-weight: 900;
+        text-transform: uppercase;
+    }
+
+    .image-editor__ratio-list button.is-active {
+        border-color: #ef5b2d;
+        background: #ef5b2d;
+        color: white;
+    }
+
+    .image-editor__range-label {
+        display: flex;
+        justify-content: space-between;
+        font-size: .6rem;
+        font-weight: 900;
+        text-transform: uppercase;
+    }
+
+    .image-editor__controls input[type="range"] { accent-color: #ef5b2d; }
+
+    .image-editor__details,
+    .image-editor__note {
+        color: #69675f;
+        font-size: .6rem;
+        line-height: 1.6;
+    }
+
+    .image-editor__footer {
+        justify-content: flex-end;
+        border-top: 1px solid rgb(23 23 20 / 15%);
+        border-bottom: 0;
+    }
+
+    .image-editor__primary,
+    .image-editor__secondary {
+        min-height: 2.9rem;
+        border: 1px solid #171714;
+        padding: .75rem 1rem;
+        font-size: .55rem;
+        font-weight: 900;
+        letter-spacing: .1em;
+        text-transform: uppercase;
+    }
+
+    .image-editor__primary {
+        border-color: #ef5b2d;
+        background: #ef5b2d;
+        color: white;
+    }
+
+    .image-editor__primary:disabled { opacity: .55; }
+    .image-editor-open { overflow: hidden; }
+
+    @media (min-width: 768px) {
+        .image-editor__body { grid-template-columns: minmax(0, 1fr) 250px; }
+        .image-editor__controls { border-top: 0; border-left: 1px solid rgb(23 23 20 / 15%); }
+    }
+
     .product-marquee {
         @apply flex min-h-20 items-center overflow-hidden;
     }

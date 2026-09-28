@@ -38,13 +38,14 @@ class BlackBoxTest extends TestCase
             ->assertRedirect(route('booking'))
             ->assertSessionHasErrors('appointment_time')
             ->assertSessionHasErrors([
-                'appointment_time' => 'Booking hanya tersedia pukul 07:00–21:30.',
+                'appointment_time' => 'Booking hanya tersedia pukul 07:00–21:15.',
             ]);
         $this->assertDatabaseMissing('bookings', ['name' => 'Uji Sebelum Buka']);
     }
 
     public function test_03_booking_dengan_jadwal_bertabrakan_ditolak(): void
     {
+        $admin = \App\Models\User::factory()->create(['is_admin' => true]);
         $date = now()->addDays(3)->toDateString();
 
         $this->post(route('bookings.store'), $this->bookingPayload([
@@ -52,6 +53,8 @@ class BlackBoxTest extends TestCase
             'appointment_time' => '10:00',
             'name' => 'Pelanggan Pertama',
         ]))->assertRedirect();
+        $firstOrder = Booking::where('name', 'Pelanggan Pertama')->firstOrFail()->transaction;
+        $this->actingAs($admin)->post(route('admin.orders.confirm-deposit', $firstOrder))->assertRedirect();
 
         $response = $this->from(route('booking'))->post(route('bookings.store'), $this->bookingPayload([
             'appointment_date' => $date,
@@ -69,11 +72,11 @@ class BlackBoxTest extends TestCase
         $this->assertDatabaseMissing('bookings', ['name' => 'Pelanggan Bertabrakan']);
     }
 
-    public function test_04_booking_yang_selesai_melewati_jam_tutup_ditolak(): void
+    public function test_04_booking_melewati_batas_waktu_operasional_ditolak(): void
     {
         $response = $this->from(route('booking'))->post(route('bookings.store'), $this->bookingPayload([
             'service_id' => 'complete',
-            'appointment_time' => '21:00',
+            'appointment_time' => '21:30',
             'name' => 'Uji Melewati Tutup',
         ]));
 
@@ -81,7 +84,7 @@ class BlackBoxTest extends TestCase
             ->assertRedirect(route('booking'))
             ->assertSessionHasErrors('appointment_time');
         $this->assertStringContainsString(
-            'agar selesai sebelum toko tutup',
+            'Booking hanya tersedia pukul 07:00–21:15',
             session('errors')->first('appointment_time'),
         );
         $this->assertDatabaseMissing('bookings', ['name' => 'Uji Melewati Tutup']);
@@ -103,7 +106,7 @@ class BlackBoxTest extends TestCase
         $this->assertSame('pending', $payment->status);
         $this->get(route('payments.show', $payment))
             ->assertOk()
-            ->assertSee('Menunggu pembayaran')
+            ->assertSee('Belum bayar')
             ->assertSee('Bayar tunai di kasir.');
     }
 
@@ -207,7 +210,8 @@ class BlackBoxTest extends TestCase
             ->post(route('admin.orders.confirm-cash', $order))
             ->assertOk()
             ->assertJsonPath('order.payment_status', 'paid')
-            ->assertJsonPath('order.status', 'ready')
+            ->assertJsonPath('order.status', 'pending')
+            ->assertJsonPath('order.workflow_label', 'Sudah dibayar / menunggu')
             ->assertJsonPath('payment.status', 'paid');
 
         $this->assertSame('paid', $payment->fresh()->status);

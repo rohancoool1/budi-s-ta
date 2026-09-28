@@ -17,11 +17,11 @@
             <div class="mt-auto flex flex-wrap gap-5 pt-12 text-[9px] uppercase tracking-[.09em] text-muted">
                 <span><b class="text-ink">@homcuts_</b> Instagram</span>
                 <span><b class="text-ink">0882-0207-03600</b> WhatsApp</span>
-                <span><b class="text-ink">Selasa—Minggu</b> 07:00—22:00</span>
+                <span><b class="text-ink">Selasa—Minggu</b> {{ $storeOpenTime }}—{{ $storeCloseTime }}</span>
             </div>
         </div>
         <div class="relative min-h-[560px] overflow-hidden border-t border-ink bg-sage lg:min-h-[620px] lg:border-l lg:border-t-0">
-            <img src="{{ asset('homcuts-storefront.png') }}" alt="Tampak depan barbershop HOMCUTS di Bulurokeng" class="h-full w-full object-cover object-center">
+            <img src="{{ asset($siteSettings->get('storefront_image', 'homcuts-storefront.png')) }}" alt="Tampak depan barbershop HOMCUTS di Bulurokeng" class="h-full w-full object-cover object-center">
             <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/75 to-transparent p-7 pt-28 text-right text-[9px] font-black tracking-[.2em] text-white">RAFLI &amp; APPINK<br>HOMCUTS TEAM</div>
         </div>
     </section>

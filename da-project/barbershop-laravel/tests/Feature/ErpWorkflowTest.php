@@ -34,8 +34,8 @@ class ErpWorkflowTest extends TestCase
         $response->assertRedirect(route('payments.show', $payment));
         $this->assertSame($barber->id, $booking->barber_id);
         $this->assertSame($service->id, $booking->service_catalog_id);
-        $this->assertSame(50, $booking->duration_minutes);
-        $this->assertSame('10:50', $booking->ends_at->format('H:i'));
+        $this->assertSame(45, $booking->duration_minutes);
+        $this->assertSame('10:45', $booking->ends_at->format('H:i'));
         $this->assertNotNull($booking->hold_expires_at);
 
         $this->assertSame('booking', $order->channel);
@@ -76,11 +76,11 @@ class ErpWorkflowTest extends TestCase
             ->assertOk()
             ->assertSee('Harga layanan')
             ->assertSee('Rp '.number_format($service->price, 0, ',', '.'))
-            ->assertSee('Konfirmasi uang diterima');
+            ->assertSee('Konfirmasi DP 50%');
         $this->actingAs($admin)
             ->get(route('admin.resources.edit', ['resource' => 'orders', 'record' => $order]))
             ->assertOk()
-            ->assertSee('Konfirmasi uang diterima');
+            ->assertSee('Konfirmasi lunas');
 
         $this->actingAs($admin)
             ->withHeader('Accept', 'application/json')
@@ -203,6 +203,7 @@ class ErpWorkflowTest extends TestCase
 
     public function test_booking_duration_overlap_is_blocked_but_an_adjacent_slot_is_allowed(): void
     {
+        $admin = User::factory()->create(['is_admin' => true]);
         $date = now()->addDays(7)->toDateString();
 
         $this->post(route('bookings.store'), $this->bookingPayload([
@@ -210,6 +211,9 @@ class ErpWorkflowTest extends TestCase
             'appointment_time' => '10:00',
             'name' => 'Booking Awal',
         ]))->assertRedirect();
+        $this->actingAs($admin)->post(
+            route('admin.orders.confirm-deposit', Booking::where('name', 'Booking Awal')->firstOrFail()->transaction),
+        )->assertRedirect();
 
         $this->post(route('bookings.store'), $this->bookingPayload([
             'appointment_date' => $date,
@@ -221,7 +225,7 @@ class ErpWorkflowTest extends TestCase
 
         $this->post(route('bookings.store'), $this->bookingPayload([
             'appointment_date' => $date,
-            'appointment_time' => '10:50',
+            'appointment_time' => '10:45',
             'name' => 'Booking Berdampingan',
         ]))->assertRedirect();
 
@@ -234,6 +238,7 @@ class ErpWorkflowTest extends TestCase
 
     public function test_quick_booking_assigns_the_first_free_barber(): void
     {
+        $admin = User::factory()->create(['is_admin' => true]);
         $date = now()->addDays(8)->toDateString();
         $made = Barber::where('slug', 'made')->firstOrFail();
         $rio = Barber::where('slug', 'rio')->firstOrFail();
@@ -243,6 +248,9 @@ class ErpWorkflowTest extends TestCase
             'appointment_time' => '13:00',
             'name' => 'Pelanggan Made',
         ]))->assertRedirect();
+        $this->actingAs($admin)->post(
+            route('admin.orders.confirm-deposit', Booking::where('name', 'Pelanggan Made')->firstOrFail()->transaction),
+        )->assertRedirect();
 
         $this->post(route('bookings.store'), $this->bookingPayload([
             'booking_type' => 'service',
@@ -270,6 +278,9 @@ class ErpWorkflowTest extends TestCase
             'appointment_time' => '15:00',
             'name' => 'Booking Pelanggan',
         ]))->assertRedirect();
+        $this->actingAs($admin)->post(
+            route('admin.orders.confirm-deposit', Booking::where('name', 'Booking Pelanggan')->firstOrFail()->transaction),
+        )->assertRedirect();
 
         $ordersBefore = Order::count();
 
@@ -289,7 +300,7 @@ class ErpWorkflowTest extends TestCase
         $this->assertSame($ordersBefore, Order::count());
     }
 
-    public function test_cash_confirmation_marks_a_product_order_paid_and_ready_for_pickup(): void
+    public function test_cash_confirmation_marks_a_product_order_paid_and_waiting_for_pickup(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);
         $product = Product::where('slug', 'natur-hair-tonic-ginseng-90ml')->firstOrFail();
@@ -312,7 +323,7 @@ class ErpWorkflowTest extends TestCase
             ->get(route('admin.resources.edit', ['resource' => 'orders', 'record' => $order]))
             ->assertOk()
             ->assertSee('Menunggu pembayaran tunai')
-            ->assertSee('Konfirmasi uang diterima');
+            ->assertSee('Konfirmasi lunas');
 
         $this->actingAs($admin)
             ->post(route('admin.orders.confirm-cash', $order))
@@ -324,7 +335,8 @@ class ErpWorkflowTest extends TestCase
         $this->assertSame('paid', $payment->status);
         $this->assertNotNull($payment->paid_at);
         $this->assertSame('paid', $order->payment_status);
-        $this->assertSame('ready', $order->status);
+        $this->assertSame('pending', $order->status);
+        $this->assertSame('Sudah dibayar / menunggu', $order->workflow_label);
         $this->assertNotNull($order->paid_at);
         $this->assertNull($order->stock_released_at);
         $this->assertSame($startingStock - 2, $product->fresh()->stock);
@@ -388,7 +400,8 @@ class ErpWorkflowTest extends TestCase
         $cashPayment->refresh();
 
         $this->assertSame('paid', $cashOrder->payment_status);
-        $this->assertSame('ready', $cashOrder->status);
+        $this->assertSame('pending', $cashOrder->status);
+        $this->assertSame('Sudah dibayar / menunggu', $cashOrder->workflow_label);
         $this->assertSame('paid', $cashPayment->status);
         $this->assertSame($admin->id, $cashPayment->confirmed_by);
         $this->assertTrue($firstPaidAt->equalTo($cashPayment->paid_at));
@@ -478,6 +491,8 @@ class ErpWorkflowTest extends TestCase
         $originalEnd = $booking->ends_at->toDateTimeString();
         $originalTotal = $order->total;
         $originalItemPrice = $item->unit_price;
+
+        $this->actingAs($admin)->post(route('admin.orders.confirm-cash', $order))->assertRedirect();
 
         Service::where('slug', 'signature')->update(['duration_minutes' => 120, 'price' => 999000]);
 
@@ -585,13 +600,13 @@ class ErpWorkflowTest extends TestCase
 
         $this->post(route('bookings.store'), $this->bookingPayload([
             'appointment_date' => $date,
-            'appointment_time' => '21:11',
+            'appointment_time' => '21:16',
             'name' => 'Melewati Tutup',
         ]))->assertSessionHasErrors('appointment_time');
 
         $this->post(route('bookings.store'), $this->bookingPayload([
             'appointment_date' => $date,
-            'appointment_time' => '21:10',
+            'appointment_time' => '21:15',
             'name' => 'Selesai Tepat Tutup',
         ]))->assertRedirect();
 
@@ -599,14 +614,14 @@ class ErpWorkflowTest extends TestCase
         $this->post(route('bookings.store'), $this->bookingPayload([
             'artist_id' => 'rio',
             'appointment_date' => now()->addDays(15)->toDateString(),
-            'appointment_time' => '19:30',
+            'appointment_time' => '19:16',
             'name' => 'Melewati Shift Barber',
         ]))->assertSessionHasErrors('appointment_time');
 
         $this->post(route('bookings.store'), $this->bookingPayload([
             'artist_id' => 'rio',
             'appointment_date' => now()->addDays(15)->toDateString(),
-            'appointment_time' => '19:10',
+            'appointment_time' => '19:15',
             'name' => 'Dalam Shift Barber',
         ]))->assertRedirect();
 

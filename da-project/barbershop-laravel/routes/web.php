@@ -31,6 +31,8 @@ Route::prefix('admin')->group(function (): void {
         Route::post('/notifications/read-all', [AdminNotificationController::class, 'readAll'])->name('notifications.read-all');
         Route::post('/notifications/{notification}/read', [AdminNotificationController::class, 'read'])->name('notifications.read');
         Route::post('/orders/{order}/confirm-cash', [AdminPaymentController::class, 'confirmCash'])->name('orders.confirm-cash');
+        Route::post('/orders/{order}/confirm-deposit', [AdminPaymentController::class, 'confirmDeposit'])->name('orders.confirm-deposit');
+        Route::post('/orders/{order}/complete', [AdminPaymentController::class, 'complete'])->name('orders.complete');
         Route::get('/bookings/check-availability', [AdminResourceController::class, 'bookingAvailability'])->name('bookings.availability');
 
         Route::get('/{resource}', [AdminResourceController::class, 'index'])->whereIn('resource', AdminResources::keys())->name('resources.index');
@@ -55,4 +57,5 @@ Route::get('/bookings/availability', [BookingController::class, 'availability'])
 Route::post('/orders', [OrderController::class, 'store'])->middleware('throttle:10,1')->name('orders.store');
 Route::post('/contact', [ContactController::class, 'store'])->name('contact.store');
 Route::get('/payments/{payment}', [PaymentController::class, 'show'])->name('payments.show');
+Route::get('/payments/{payment}/invoice.pdf', [PaymentController::class, 'invoice'])->name('payments.invoice');
 Route::get('/payments/{payment}/status', [PaymentController::class, 'status'])->middleware('throttle:120,1')->name('payments.status');

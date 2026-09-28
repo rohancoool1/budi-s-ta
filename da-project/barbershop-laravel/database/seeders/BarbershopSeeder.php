@@ -26,10 +26,10 @@ class BarbershopSeeder extends Seeder
         }
 
         $services = [
-            ['slug' => 'signature', 'name' => 'Potong rambut Signature', 'duration_minutes' => 50, 'price' => 185000, 'description' => 'Konsultasi, keramas, potongan presisi, dan penataan yang disesuaikan.', 'sort_order' => 1],
-            ['slug' => 'fade', 'name' => 'Skin fade', 'duration_minutes' => 60, 'price' => 210000, 'description' => 'Skin fade halus dengan detail tekstur dan penyelesaian yang rapi.', 'sort_order' => 2],
-            ['slug' => 'beard', 'name' => 'Bentuk janggut', 'duration_minutes' => 35, 'price' => 125000, 'description' => 'Pembentukan, perapian garis, handuk hangat, dan perawatan akhir.', 'sort_order' => 3],
-            ['slug' => 'complete', 'name' => 'Paket lengkap', 'duration_minutes' => 90, 'price' => 325000, 'description' => 'Potong rambut Signature, bentuk janggut, handuk hangat, dan penataan.', 'sort_order' => 4],
+            ['slug' => 'signature', 'name' => 'Potong rambut Signature', 'duration_minutes' => 45, 'price' => 185000, 'description' => 'Konsultasi, keramas, potongan presisi, dan penataan yang disesuaikan.', 'sort_order' => 1],
+            ['slug' => 'fade', 'name' => 'Skin fade', 'duration_minutes' => 45, 'price' => 210000, 'description' => 'Skin fade halus dengan detail tekstur dan penyelesaian yang rapi.', 'sort_order' => 2],
+            ['slug' => 'beard', 'name' => 'Bentuk janggut', 'duration_minutes' => 45, 'price' => 125000, 'description' => 'Pembentukan, perapian garis, handuk hangat, dan perawatan akhir.', 'sort_order' => 3],
+            ['slug' => 'complete', 'name' => 'Paket lengkap', 'duration_minutes' => 45, 'price' => 325000, 'description' => 'Potong rambut Signature, bentuk janggut, handuk hangat, dan penataan.', 'sort_order' => 4],
         ];
 
         foreach ($services as $service) {
@@ -93,9 +93,11 @@ class BarbershopSeeder extends Seeder
             ['key' => 'instagram_url', 'value' => 'https://instagram.com/homcuts_', 'group' => 'social'],
             ['key' => 'tiktok_handle', 'value' => '@homcuts', 'group' => 'social'],
             ['key' => 'tiktok_url', 'value' => 'https://www.tiktok.com/@homcuts', 'group' => 'social'],
-            ['key' => 'hours_weekday', 'value' => 'Selasa—Jumat 07:00—22:00', 'group' => 'hours'],
-            ['key' => 'hours_weekend', 'value' => 'Sabtu—Minggu 07:00—22:00', 'group' => 'hours'],
             ['key' => 'hours_closed', 'value' => 'Senin tutup', 'group' => 'hours'],
+            ['key' => 'service_duration_minutes', 'value' => '45', 'group' => 'operations'],
+            ['key' => 'store_open_time', 'value' => '07:00', 'group' => 'operations'],
+            ['key' => 'store_close_time', 'value' => '22:00', 'group' => 'operations'],
+            ['key' => 'storefront_image', 'value' => 'homcuts-storefront.png', 'group' => 'media'],
         ];
 
         foreach ($settings as $setting) {

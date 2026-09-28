@@ -167,8 +167,9 @@ class BarbershopTest extends TestCase
         $this->get(route('booking'))
             ->assertOk()
             ->assertSee('min="07:00"', false)
-            ->assertSee('max="21:30"', false)
-            ->assertSee('selesai sebelum 22.00');
+            ->assertSee('max="21:15"', false)
+            ->assertSee('Estimasi layanan 45 menit')
+            ->assertSee('tepat saat layanan sebelumnya selesai');
     }
 
     public function test_order_total_is_calculated_on_the_server(): void

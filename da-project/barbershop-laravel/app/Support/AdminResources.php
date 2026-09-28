@@ -47,7 +47,6 @@ class AdminResources
     {
         $definitions = self::definitions();
         $orderedKeys = collect([
-            'bookings',
             'orders',
             'barbers',
             'services',
@@ -63,7 +62,7 @@ class AdminResources
                 'route_key' => $key === 'barbers' ? 'capsters' : $key,
                 'label' => $definitions[$key]['label'],
                 'short_label' => $definitions[$key]['short_label'] ?? $definitions[$key]['label'],
-                'highlighted' => in_array($key, ['bookings', 'orders'], true),
+                'highlighted' => $key === 'orders',
             ])
             ->values()
             ->all();
@@ -72,6 +71,11 @@ class AdminResources
     private static function definitions(): array
     {
         $imageRules = ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'];
+        $scheduleSettings = ServiceSchedule::settings();
+        $storeOpenTime = ServiceSchedule::openingTime($scheduleSettings);
+        $storeCloseTime = ServiceSchedule::closingTime($scheduleSettings);
+        $latestBookingTime = ServiceSchedule::latestStartTime($scheduleSettings);
+        $operatingTimeLabel = str_replace(':', '.', $storeOpenTime).'–'.str_replace(':', '.', $latestBookingTime);
 
         return [
             'products' => [
@@ -90,7 +94,7 @@ class AdminResources
                     ['key' => 'is_active', 'label' => 'Ditampilkan', 'format' => 'boolean'],
                 ],
                 'fields' => [
-                    ['name' => 'image_upload', 'label' => 'Foto produk', 'type' => 'file', 'accept' => 'image/jpeg,image/png,image/webp', 'stores_to' => 'image_path', 'related_defaults' => ['image_position' => '50% 50%', 'image_size' => 'cover'], 'required_on_create' => true, 'wide' => true, 'rules' => $imageRules],
+                    ['name' => 'image_upload', 'label' => 'Foto produk', 'type' => 'file', 'accept' => 'image/jpeg,image/png,image/webp', 'stores_to' => 'image_path', 'crop_aspect' => '1', 'related_defaults' => ['image_position' => '50% 50%', 'image_size' => 'cover'], 'required_on_create' => true, 'wide' => true, 'rules' => $imageRules],
                     ['name' => 'name', 'label' => 'Nama produk', 'type' => 'text', 'rules' => ['required', 'string', 'max:150']],
                     ['name' => 'slug', 'label' => 'Slug URL', 'type' => 'text', 'rules' => ['required', 'string', 'max:100'], 'unique' => true],
                     ['name' => 'category', 'label' => 'Kategori', 'type' => 'text', 'rules' => ['required', 'string', 'max:80']],
@@ -120,14 +124,14 @@ class AdminResources
                     ['key' => 'is_active', 'label' => 'Dapat dipesan', 'format' => 'boolean'],
                 ],
                 'fields' => [
-                    ['name' => 'image_upload', 'label' => 'Foto capster', 'type' => 'file', 'accept' => 'image/jpeg,image/png,image/webp', 'stores_to' => 'image_path', 'related_defaults' => ['image_position' => '50% 50%', 'image_size' => 'cover'], 'required_on_create' => true, 'wide' => true, 'rules' => $imageRules],
+                    ['name' => 'image_upload', 'label' => 'Foto capster', 'type' => 'file', 'accept' => 'image/jpeg,image/png,image/webp', 'stores_to' => 'image_path', 'crop_aspect' => '0.8', 'related_defaults' => ['image_position' => '50% 50%', 'image_size' => 'cover'], 'required_on_create' => true, 'wide' => true, 'rules' => $imageRules],
                     ['name' => 'name', 'label' => 'Nama lengkap', 'type' => 'text', 'rules' => ['required', 'string', 'max:120']],
                     ['name' => 'slug', 'label' => 'Slug URL', 'type' => 'text', 'rules' => ['required', 'string', 'max:100'], 'unique' => true],
                     ['name' => 'initials', 'label' => 'Inisial', 'type' => 'text', 'rules' => ['required', 'string', 'max:4']],
                     ['name' => 'role', 'label' => 'Peran / spesialisasi', 'type' => 'text', 'rules' => ['required', 'string', 'max:100']],
                     ['name' => 'bio', 'label' => 'Biografi', 'type' => 'textarea', 'wide' => true, 'rules' => ['nullable', 'string', 'max:1200']],
-                    ['name' => 'work_start_time', 'label' => 'Mulai jam kerja', 'type' => 'time', 'min' => '07:00', 'max' => '21:30', 'step' => 60, 'default' => '07:00', 'rules' => ['nullable', 'date_format:H:i']],
-                    ['name' => 'work_end_time', 'label' => 'Selesai jam kerja', 'type' => 'time', 'min' => '07:00', 'max' => '22:00', 'step' => 60, 'default' => '22:00', 'rules' => ['nullable', 'date_format:H:i', 'after:work_start_time']],
+                    ['name' => 'work_start_time', 'label' => 'Mulai jam kerja', 'type' => 'time', 'min' => $storeOpenTime, 'max' => $latestBookingTime, 'step' => 60, 'default' => $storeOpenTime, 'rules' => ['nullable', 'date_format:H:i']],
+                    ['name' => 'work_end_time', 'label' => 'Selesai jam kerja', 'type' => 'time', 'min' => $storeOpenTime, 'max' => $storeCloseTime, 'step' => 60, 'default' => $storeCloseTime, 'rules' => ['nullable', 'date_format:H:i', 'after:work_start_time']],
                     ['name' => 'sort_order', 'label' => 'Urutan', 'type' => 'number', 'min' => 0, 'default' => 0, 'rules' => ['required', 'integer', 'min:0']],
                     ['name' => 'is_active', 'label' => 'Tersedia untuk booking', 'type' => 'checkbox', 'default' => true, 'rules' => ['boolean']],
                 ],
@@ -142,14 +146,12 @@ class AdminResources
                 'order' => ['sort_order', 'asc'],
                 'columns' => [
                     ['key' => 'name', 'label' => 'Layanan'],
-                    ['key' => 'duration_minutes', 'label' => 'Menit'],
                     ['key' => 'price', 'label' => 'Harga', 'format' => 'money'],
                     ['key' => 'is_active', 'label' => 'Aktif', 'format' => 'boolean'],
                 ],
                 'fields' => [
                     ['name' => 'name', 'label' => 'Nama layanan', 'type' => 'text', 'rules' => ['required', 'string', 'max:120'], 'unique' => true],
                     ['name' => 'slug', 'label' => 'Slug URL', 'type' => 'text', 'rules' => ['required', 'string', 'max:100'], 'unique' => true],
-                    ['name' => 'duration_minutes', 'label' => 'Durasi (menit)', 'type' => 'number', 'min' => 5, 'rules' => ['required', 'integer', 'min:5', 'max:480']],
                     ['name' => 'price', 'label' => 'Harga (Rp)', 'type' => 'number', 'min' => 0, 'rules' => ['required', 'integer', 'min:0']],
                     ['name' => 'description', 'label' => 'Deskripsi', 'type' => 'textarea', 'wide' => true, 'rules' => ['nullable', 'string', 'max:1000']],
                     ['name' => 'sort_order', 'label' => 'Urutan', 'type' => 'number', 'min' => 0, 'default' => 0, 'rules' => ['required', 'integer', 'min:0']],
@@ -172,7 +174,7 @@ class AdminResources
                     ['key' => 'is_published', 'label' => 'Dipublikasikan', 'format' => 'boolean'],
                 ],
                 'fields' => [
-                    ['name' => 'image_upload', 'label' => 'Unggah foto hasil potongan', 'type' => 'file', 'accept' => 'image/jpeg,image/png,image/webp', 'stores_to' => 'image_path', 'related_defaults' => ['position' => '50% 50%', 'image_size' => 'cover'], 'required_on_create' => true, 'wide' => true, 'rules' => $imageRules],
+                    ['name' => 'image_upload', 'label' => 'Unggah foto hasil potongan', 'type' => 'file', 'accept' => 'image/jpeg,image/png,image/webp', 'stores_to' => 'image_path', 'crop_aspect' => '1', 'related_defaults' => ['position' => '50% 50%', 'image_size' => 'cover'], 'required_on_create' => true, 'wide' => true, 'rules' => $imageRules],
                     ['name' => 'style', 'label' => 'Nama model rambut', 'type' => 'text', 'rules' => ['required', 'string', 'max:120']],
                     ['name' => 'client', 'label' => 'Koleksi / kredit foto', 'type' => 'text', 'default' => 'Koleksi HOMCUTS', 'rules' => ['required', 'string', 'max:120']],
                     ['name' => 'barber_id', 'label' => 'Capster', 'type' => 'select', 'options' => 'barber_ids', 'placeholder' => 'Tidak memilih capster', 'rules' => ['nullable', 'exists:barbers,id']],
@@ -186,7 +188,7 @@ class AdminResources
                 'label' => 'Jadwal booking',
                 'short_label' => 'Booking',
                 'singular' => 'booking',
-                'description' => 'Kelola jadwal, capster, serta status layanan. Setiap booking langsung memiliki transaksi dan status pembayaran.',
+                'description' => 'Kelola jadwal, capster, harga, dan status booking dalam satu alur.',
                 'model' => Booking::class,
                 'table' => 'bookings',
                 'with' => ['barber', 'service', 'transaction.latestPayment'],
@@ -201,26 +203,25 @@ class AdminResources
                     ['key' => 'barber.name', 'label' => 'Capster', 'sort' => 'barber_name'],
                     ['key' => 'service.name', 'label' => 'Layanan', 'sort' => 'service_name'],
                     ['key' => 'transaction.total', 'label' => 'Harga', 'format' => 'money', 'sort' => 'transaction_total'],
-                    ['key' => 'transaction.payment_status', 'label' => 'Pembayaran', 'format' => 'payment', 'sort' => 'payment_status'],
-                    ['key' => 'status', 'label' => 'Status', 'format' => 'status'],
+                    ['key' => 'status', 'label' => 'Status booking', 'format' => 'status'],
                 ],
                 'fields' => [
                     ['name' => 'booking_type', 'label' => 'Jenis booking', 'type' => 'select', 'options' => ['service' => 'Capster mana saja yang tersedia', 'artist' => 'Pilih capster tertentu'], 'rules' => ['required', 'in:service,artist']],
                     ['name' => 'artist_id', 'label' => 'Capster pilihan', 'type' => 'select', 'options' => 'barber_slugs', 'placeholder' => 'Capster mana saja', 'rules' => ['nullable', 'exists:barbers,slug']],
                     ['name' => 'service_id', 'label' => 'Layanan', 'type' => 'select', 'options' => 'service_slugs', 'rules' => ['required', 'exists:services,slug']],
                     ['name' => 'appointment_date', 'label' => 'Tanggal kunjungan', 'type' => 'date', 'rules' => ['required', 'date_format:Y-m-d']],
-                    ['name' => 'appointment_time', 'label' => 'Waktu kunjungan (07.00–21.30)', 'type' => 'time', 'min' => '07:00', 'max' => '21:30', 'step' => 60, 'rules' => ['required', 'date_format:H:i']],
+                    ['name' => 'appointment_time', 'label' => "Waktu kunjungan ({$operatingTimeLabel})", 'type' => 'time', 'min' => $storeOpenTime, 'max' => $latestBookingTime, 'step' => 60, 'rules' => ['required', 'date_format:H:i']],
                     ['name' => 'name', 'label' => 'Nama pelanggan', 'type' => 'text', 'rules' => ['required', 'string', 'max:100']],
                     ['name' => 'phone', 'label' => 'Telepon / WhatsApp', 'type' => 'text', 'rules' => ['required', 'string', 'max:30']],
-                    ['name' => 'status', 'label' => 'Status layanan', 'type' => 'select', 'default' => 'pending', 'options' => ['pending' => 'Menunggu pembayaran', 'confirmed' => 'Dikonfirmasi / akan datang', 'completed' => 'Selesai', 'cancelled' => 'Dibatalkan'], 'rules' => ['required', 'in:pending,confirmed,completed,cancelled']],
+                    ['name' => 'status', 'label' => 'Status booking', 'type' => 'select', 'default' => 'pending', 'options' => ['pending' => 'Belum bayar', 'deposit' => 'Sudah DP 50%', 'confirmed' => 'Lunas / akan datang', 'completed' => 'Selesai', 'cancelled' => 'Dibatalkan'], 'rules' => ['required', 'in:pending,deposit,confirmed,completed,cancelled']],
                     ['name' => 'notes', 'label' => 'Catatan internal', 'type' => 'textarea', 'wide' => true, 'rules' => ['nullable', 'string', 'max:2000']],
                 ],
             ],
             'orders' => [
-                'label' => 'Riwayat transaksi',
+                'label' => 'Transaksi',
                 'short_label' => 'Transaksi',
                 'singular' => 'transaksi',
-                'description' => 'Kelola riwayat keuangan dan konfirmasi pembayaran tunai dari booking, pesanan produk aplikasi, maupun pelanggan walk-in.',
+                'description' => 'Kelola booking, pesanan produk, dan transaksi walk-in dalam satu halaman.',
                 'model' => Order::class,
                 'table' => 'orders',
                 'with' => ['items.service', 'items.barber', 'booking.barber', 'booking.service', 'cashier', 'latestPayment'],
@@ -237,12 +238,11 @@ class AdminResources
                     ['key' => 'customer_name', 'label' => 'Pelanggan'],
                     ['key' => 'barber_name', 'label' => 'Capster', 'sort' => 'barber_name'],
                     ['key' => 'transaction_type', 'label' => 'Jenis', 'format' => 'transaction_type'],
-                    ['key' => 'status', 'label' => 'Layanan / pesanan', 'format' => 'status'],
-                    ['key' => 'payment_status', 'label' => 'Pembayaran', 'format' => 'payment'],
+                    ['key' => 'status', 'label' => 'Status', 'format' => 'status'],
                     ['key' => 'total', 'label' => 'Total', 'format' => 'money'],
                 ],
                 'fields' => [
-                    ['name' => 'status', 'label' => 'Status layanan / pesanan', 'type' => 'select', 'default' => 'pending', 'options' => ['pending' => 'Menunggu', 'ready' => 'Siap diambil', 'completed' => 'Selesai / sudah diambil', 'cancelled' => 'Dibatalkan'], 'rules' => ['required', 'in:pending,ready,completed,cancelled']],
+                    ['name' => 'status', 'label' => 'Status layanan / pesanan', 'type' => 'select', 'default' => 'pending', 'options' => ['pending' => 'Belum bayar', 'deposit' => 'Sudah DP 50%', 'paid' => 'Lunas / akan datang', 'completed' => 'Selesai / sudah diambil', 'cancelled' => 'Dibatalkan'], 'rules' => ['required', 'in:pending,deposit,paid,completed,cancelled']],
                     ['name' => 'notes', 'label' => 'Catatan internal', 'type' => 'textarea', 'wide' => true, 'rules' => ['nullable', 'string', 'max:2000']],
                 ],
             ],
@@ -272,19 +272,20 @@ class AdminResources
                 'label' => 'Pengaturan situs',
                 'short_label' => 'Pengaturan',
                 'singular' => 'pengaturan',
-                'description' => 'Kelola informasi kontak, jam buka, dan konten situs yang dapat digunakan ulang.',
+                'description' => 'Kelola informasi kontak, jam buka, durasi layanan, batas pembayaran, dan konten situs yang dapat digunakan ulang.',
                 'model' => SiteSetting::class,
                 'table' => 'site_settings',
                 'search' => ['key', 'value', 'group'],
                 'order' => ['group', 'asc'],
                 'columns' => [
-                    ['key' => 'key', 'label' => 'Kunci'],
+                    ['key' => 'key', 'label' => 'Pengaturan', 'format' => 'setting_key'],
                     ['key' => 'value', 'label' => 'Nilai'],
                     ['key' => 'group', 'label' => 'Grup'],
                 ],
                 'fields' => [
+                    ['name' => 'image_upload', 'label' => 'Foto bagian depan toko', 'type' => 'file', 'accept' => 'image/jpeg,image/png,image/webp', 'stores_to' => 'value', 'crop_aspect' => '1.333333', 'only_for_setting_keys' => ['storefront_image'], 'rules' => $imageRules, 'wide' => true],
                     ['name' => 'key', 'label' => 'Kunci pengaturan', 'type' => 'text', 'rules' => ['required', 'string', 'max:100'], 'unique' => true],
-                    ['name' => 'value', 'label' => 'Nilai', 'type' => 'textarea', 'wide' => true, 'rules' => ['nullable', 'string', 'max:3000']],
+                    ['name' => 'value', 'label' => 'Nilai', 'type' => 'textarea', 'wide' => true, 'hide_for_setting_keys' => ['storefront_image'], 'rules' => ['nullable', 'string', 'max:3000']],
                     ['name' => 'group', 'label' => 'Grup', 'type' => 'text', 'default' => 'general', 'rules' => ['required', 'string', 'max:80']],
                 ],
             ],

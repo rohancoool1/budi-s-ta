@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Product;
 use App\Models\User;
+use App\Support\PaymentPolicy;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -16,6 +17,7 @@ class PaymentService
 {
     public function __construct(
         private readonly AdminNotifier $notifier,
+        private readonly BookingAvailabilityService $availability,
     ) {}
 
     public function createForOrder(Order $order, string $method, ?CarbonInterface $expiresAt = null): Payment
@@ -41,6 +43,13 @@ class PaymentService
                 throw ValidationException::withMessages(['payment_method' => 'Transaksi ini sudah tercatat lunas.']);
             }
 
+            $paidAmount = (int) $order->payments()->where('status', 'paid')->lockForUpdate()->sum('amount');
+            $remainingAmount = max(0, (int) $order->total - $paidAmount);
+
+            if ($remainingAmount === 0) {
+                throw ValidationException::withMessages(['payment_method' => 'Transaksi ini sudah tercatat lunas.']);
+            }
+
             $existing = $order->payments()
                 ->where('status', 'pending')
                 ->lockForUpdate()
@@ -49,7 +58,7 @@ class PaymentService
 
             $provider = 'cash';
 
-            if ($existing && $existing->method === $method && $existing->provider === $provider && $existing->amount === $order->total) {
+            if ($existing && $existing->method === $method && $existing->provider === $provider && $existing->amount === $remainingAmount) {
                 return $existing;
             }
 
@@ -65,7 +74,7 @@ class PaymentService
                 'reference' => $reference,
                 'method' => $method,
                 'provider' => $provider,
-                'amount' => $order->total,
+                'amount' => $remainingAmount,
                 'status' => 'pending',
                 'qr_payload' => null,
                 'expires_at' => $expiresAt,
@@ -74,8 +83,8 @@ class PaymentService
 
             $order->update([
                 'payment_method' => $method,
-                'payment_status' => 'unpaid',
-                'paid_at' => null,
+                'payment_status' => $paidAmount > 0 ? 'partial' : 'unpaid',
+                'paid_at' => $paidAmount > 0 ? $order->paid_at : null,
             ]);
 
             return $payment;
@@ -115,26 +124,29 @@ class PaymentService
                 return ['payment' => $payment, 'notice' => 'late'];
             }
 
-            if ($payment->amount !== $order->total) {
-                $this->cancelLockedOrder($order, 'Nominal pembayaran tidak lagi cocok dengan total transaksi.');
+            $otherPaidAmount = (int) $order->payments()
+                ->whereKeyNot($payment->id)
+                ->where('status', 'paid')
+                ->lockForUpdate()
+                ->sum('amount');
+            $expectedAmount = max(0, (int) $order->total - $otherPaidAmount);
+
+            if ($payment->amount !== $expectedAmount) {
+                if ($order->payment_status === 'unpaid') {
+                    $this->cancelLockedOrder($order, 'Nominal pembayaran tidak lagi cocok dengan total transaksi.');
+                }
                 $payment->update([
                     'status' => 'review',
                     'metadata' => [
                         ...($payment->metadata ?? []),
-                        'amount_mismatch' => ['payment' => $payment->amount, 'order' => $order->total],
+                        'amount_mismatch' => ['payment' => $payment->amount, 'remaining' => $expectedAmount],
                     ],
                 ]);
 
                 return ['payment' => $payment, 'notice' => 'amount'];
             }
 
-            $otherPaidPayment = $order->payments()
-                ->whereKeyNot($payment->id)
-                ->where('status', 'paid')
-                ->lockForUpdate()
-                ->first();
-
-            if ($order->payment_status === 'paid' || $otherPaidPayment) {
+            if ($order->payment_status === 'paid' || $expectedAmount === 0) {
                 $payment->update([
                     'status' => 'review',
                     'metadata' => [...($payment->metadata ?? []), 'duplicate_payment_received_at' => now()->toIso8601String()],
@@ -150,27 +162,17 @@ class PaymentService
                 'confirmed_by' => $confirmedBy?->id,
             ]);
 
-            $orderStatus = $order->status;
-
-            if ($order->channel === 'online' && $order->transaction_type === 'product' && $orderStatus === 'pending') {
-                $orderStatus = 'ready';
-            }
-
-            if ($order->channel === 'cashier' && in_array($order->transaction_type, ['service', 'mixed'], true) && $orderStatus === 'pending') {
-                $orderStatus = 'completed';
-            }
-
             $order->update([
                 'payment_method' => $payment->method,
                 'payment_status' => 'paid',
                 'paid_at' => $paidAt,
                 'cashier_id' => $confirmedBy?->id ?? $order->cashier_id,
-                'status' => $orderStatus,
+                'status' => $order->status,
             ]);
 
             if ($order->booking_id) {
                 $order->booking()
-                    ->where('status', 'pending')
+                    ->whereIn('status', ['pending', 'deposit'])
                     ->update([
                         'status' => 'confirmed',
                         'hold_expires_at' => null,
@@ -225,7 +227,7 @@ class PaymentService
 
     public function confirmCash(Order $order, User $cashier): Payment
     {
-        $order->refresh();
+        $order->refresh()->load('booking.barber');
 
         if ($order->payment_method !== 'cash') {
             throw ValidationException::withMessages([
@@ -259,7 +261,23 @@ class PaymentService
             ]);
         }
 
-        $payment = $this->markPaid($payment, $cashier);
+        if ($order->booking && $order->payment_status === 'unpaid') {
+            $payment = DB::transaction(function () use ($order, $payment, $cashier): Payment {
+                $booking = $order->booking;
+                $this->availability->resolve(
+                    $booking->service_id,
+                    $booking->appointment_date->format('Y-m-d'),
+                    substr((string) $booking->appointment_time, 0, 5),
+                    $booking->barber?->slug ?? $booking->artist_id,
+                    $booking->id,
+                    true,
+                );
+
+                return $this->markPaid($payment, $cashier);
+            }, 3);
+        } else {
+            $payment = $this->markPaid($payment, $cashier);
+        }
 
         if ($payment->status !== 'paid') {
             throw ValidationException::withMessages([
@@ -268,6 +286,96 @@ class PaymentService
         }
 
         return $payment;
+    }
+
+    public function confirmDeposit(Order $order, User $cashier): Payment
+    {
+        $order->refresh()->load('booking.barber');
+
+        if (! $order->booking || $order->payment_method !== 'cash') {
+            throw ValidationException::withMessages([
+                'payment' => 'DP hanya tersedia untuk transaksi booking dengan pembayaran tunai.',
+            ]);
+        }
+
+        if ($order->status === 'cancelled' || $order->payment_status === 'paid') {
+            throw ValidationException::withMessages([
+                'payment' => 'Booking ini sudah dibatalkan atau sudah lunas.',
+            ]);
+        }
+
+        if ($order->payment_status === 'partial') {
+            return $order->payments()->where('status', 'paid')->oldest('id')->firstOrFail();
+        }
+
+        $booking = $order->booking;
+
+        $payment = DB::transaction(function () use ($order, $booking, $cashier): Payment {
+            // Kunci capster dan transaksi yang berbenturan lebih dahulu agar
+            // dua pembayaran DP bersamaan tidak dapat mengunci slot yang sama.
+            $this->availability->resolve(
+                $booking->service_id,
+                $booking->appointment_date->format('Y-m-d'),
+                substr((string) $booking->appointment_time, 0, 5),
+                $booking->barber?->slug ?? $booking->artist_id,
+                $booking->id,
+                true,
+            );
+            $order = $this->lockOrder($order);
+
+            if ($order->payment_status !== 'unpaid' || $order->status === 'cancelled') {
+                throw ValidationException::withMessages([
+                    'payment' => 'Status pembayaran booking sudah berubah. Muat ulang halaman dan periksa kembali.',
+                ]);
+            }
+
+            $payment = $order->payments()
+                ->where('method', 'cash')
+                ->where('status', 'pending')
+                ->lockForUpdate()
+                ->latest('id')
+                ->first();
+
+            if (! $payment) {
+                throw ValidationException::withMessages(['payment' => 'Pembayaran aktif tidak ditemukan.']);
+            }
+
+            if ($payment->expires_at?->isPast()) {
+                throw ValidationException::withMessages(['payment' => 'Batas pembayaran sudah habis. Buat booking baru.']);
+            }
+
+            $deposit = PaymentPolicy::depositAmount((int) $order->total);
+            $paidAt = now();
+            $payment->update([
+                'amount' => $deposit,
+                'status' => 'paid',
+                'paid_at' => $paidAt,
+                'confirmed_by' => $cashier->id,
+                'metadata' => [...($payment->metadata ?? []), 'payment_stage' => 'deposit'],
+            ]);
+            $order->update([
+                'payment_status' => 'partial',
+                'paid_at' => $paidAt,
+                'cashier_id' => $cashier->id,
+            ]);
+            $order->booking()->update([
+                'status' => 'deposit',
+                'hold_expires_at' => null,
+            ]);
+
+            return $payment;
+        }, 3);
+
+        $this->createForOrder($order->fresh(), 'cash');
+
+        $this->notifier->send(
+            'payment_deposit',
+            'DP booking diterima',
+            "DP 50% transaksi #{$order->id} sebesar Rp ".number_format($payment->amount, 0, ',', '.').' sudah diterima dan jadwal telah dikunci.',
+            route('admin.resources.edit', ['resource' => 'orders', 'record' => $order->id]),
+        );
+
+        return $payment->fresh('order');
     }
 
     public function expireDuePayments(int $limit = 100): int
@@ -387,9 +495,9 @@ class PaymentService
 
     private function cancelLockedOrder(Order $order, string $reason): void
     {
-        if ($order->payment_status === 'paid') {
+        if (in_array($order->payment_status, ['partial', 'paid'], true)) {
             throw ValidationException::withMessages([
-                'status' => 'Transaksi yang sudah lunas tidak boleh dibatalkan sebelum pembayaran dikembalikan.',
+                'status' => 'Transaksi yang sudah menerima DP atau pelunasan tidak boleh dibatalkan sebelum pembayaran dikembalikan.',
             ]);
         }
 

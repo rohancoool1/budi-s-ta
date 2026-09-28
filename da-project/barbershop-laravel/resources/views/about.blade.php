@@ -11,7 +11,7 @@
             <p class="max-w-lg font-display text-lg leading-relaxed text-muted">HOMCUTS hadir agar setiap pelanggan mendapat potongan yang sesuai: konsultasi yang jujur, pengerjaan yang teliti, dan hasil yang mudah dirawat setelah pulang.</p>
         </div>
         <div class="relative min-h-[500px] overflow-hidden border-t border-ink bg-sage lg:border-l lg:border-t-0">
-            <img src="{{ asset('homcuts-storefront.png') }}" alt="Tampak depan barbershop HOMCUTS di Bulurokeng" class="h-full w-full object-cover object-center">
+            <img src="{{ asset($siteSettings->get('storefront_image', 'homcuts-storefront.png')) }}" alt="Tampak depan barbershop HOMCUTS di Bulurokeng" class="h-full w-full object-cover object-center">
             <div class="absolute bottom-6 left-6 border border-paper/60 bg-ink/80 px-5 py-4 text-paper backdrop-blur"><span class="text-[8px] font-black tracking-[.16em]">BULUROKENG · MAKASSAR</span></div>
         </div>
     </section>

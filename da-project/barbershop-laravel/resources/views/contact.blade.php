@@ -4,6 +4,11 @@
 @section('description', 'Hubungi HOMCUTS di Jl. Ir. Sutami, Bulurokeng, Makassar untuk booking, produk, dan pertanyaan umum.')
 
 @section('content')
+    @php
+        $contactPhone = $siteSettings->get('phone', '0882-0207-03600');
+        $contactDigits = preg_replace('/\D+/', '', $contactPhone);
+        if (str_starts_with($contactDigits, '0')) $contactDigits = '62'.substr($contactDigits, 1);
+    @endphp
     <section class="border-b border-ink bg-cream px-6 pb-16 pt-20 md:px-[6vw] md:pb-20 md:pt-28">
         <div class="grid items-end gap-8 lg:grid-cols-[1.4fr_.6fr]">
             <div><p class="section-kicker">05 / HUBUNGI KAMI</p><h1 class="page-title">Mari bicara<br><em>tentang rambut.</em></h1></div>
@@ -17,10 +22,10 @@
             <h2 class="my-6 font-display text-4xl tracking-[-.04em]">Kunjungi barbershop kami.</h2>
             <div class="space-y-8 border-t border-ink pt-8 text-[11px] leading-relaxed">
                 <div><b class="field-label mb-2">Alamat</b><p>{{ $siteSettings->get('address_line_1') }}<br>{{ $siteSettings->get('address_line_2') }}</p></div>
-                <div><b class="field-label mb-2">Telepon atau WhatsApp</b><a class="link-button" href="https://wa.me/{{ ltrim($siteSettings->get('phone_link', '+62882020703600'), '+') }}" target="_blank" rel="noopener">{{ $siteSettings->get('phone', '0882-0207-03600') }} ↗</a></div>
+                <div><b class="field-label mb-2">Telepon atau WhatsApp</b><a class="link-button" href="https://wa.me/{{ $contactDigits }}" target="_blank" rel="noopener">{{ $contactPhone }} ↗</a></div>
                 <div><b class="field-label mb-2">Media sosial</b><a class="link-button normal-case" href="{{ $siteSettings->get('instagram_url', 'https://instagram.com/homcuts_') }}" target="_blank" rel="noopener">Instagram {{ $siteSettings->get('instagram_handle', '@homcuts_') }} ↗</a><br><a class="link-button normal-case mt-2" href="{{ $siteSettings->get('tiktok_url', 'https://www.tiktok.com/@homcuts') }}" target="_blank" rel="noopener">TikTok {{ $siteSettings->get('tiktok_handle', '@homcuts') }} ↗</a></div>
                 @if ($siteSettings->get('email'))<div><b class="field-label mb-2">Email</b><a class="link-button normal-case" href="mailto:{{ $siteSettings->get('email') }}">{{ $siteSettings->get('email') }} ↗</a></div>@endif
-                <div><b class="field-label mb-2">Jam buka</b><p>{{ $siteSettings->get('hours_weekday') }}<br>{{ $siteSettings->get('hours_weekend') }}<br>{{ $siteSettings->get('hours_closed') }}</p></div>
+                <div><b class="field-label mb-2">Jam buka</b><p>Selasa—Jumat {{ $storeOpenTime }}—{{ $storeCloseTime }}<br>Sabtu—Minggu {{ $storeOpenTime }}—{{ $storeCloseTime }}<br>{{ $siteSettings->get('hours_closed', 'Senin tutup') }}</p></div>
             </div>
             <div class="relative mt-12 grid min-h-56 place-items-center overflow-hidden border border-ink bg-paper/35">
                 <div class="absolute inset-0 opacity-30" style="background-image: linear-gradient(#171714 1px, transparent 1px), linear-gradient(90deg, #171714 1px, transparent 1px); background-size: 38px 38px"></div>

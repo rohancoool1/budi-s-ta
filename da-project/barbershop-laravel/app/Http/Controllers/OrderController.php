@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Services\AdminNotifier;
 use App\Services\PaymentService;
+use App\Support\PaymentPolicy;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -93,7 +94,7 @@ class OrderController extends Controller
             return $order;
         });
 
-        $expiryMinutes = config('payments.product_cash_expiry_minutes');
+        $expiryMinutes = PaymentPolicy::expiryMinutes();
 
         try {
             $payment = $this->payments->createForOrder(

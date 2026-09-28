@@ -18,7 +18,7 @@
 
     <section class="grid gap-12 px-6 py-20 md:px-[6vw] lg:grid-cols-[1.25fr_.75fr] lg:py-24">
         <div class="border border-ink bg-paper shadow-[10px_10px_0_#9faa8d]">
-            <form action="{{ route('bookings.store') }}" method="POST" class="p-5 md:p-8" data-booking-form data-availability-url="{{ route('bookings.availability') }}">
+            <form action="{{ route('bookings.store') }}" method="POST" class="p-5 md:p-8" data-booking-form data-availability-url="{{ route('bookings.availability') }}" data-service-duration="{{ $serviceDurationMinutes }}" data-open-time="{{ $storeOpenTime }}" data-close-time="{{ $storeCloseTime }}" data-latest-time="{{ $latestBookingTime }}">
                 @csrf
                 <input id="booking-type" type="hidden" name="booking_type" value="{{ $initialMode }}">
                 <div class="-mx-5 -mt-5 mb-7 grid grid-cols-2 border-b border-ink md:-mx-8 md:-mt-8" role="tablist" aria-label="Jenis booking">
@@ -44,13 +44,13 @@
                 <label class="field-label" for="service_id">Pilih layanan</label>
                 <select class="form-control mt-2" id="service_id" name="service_id" required>
                     @foreach ($services as $service)
-                        <option value="{{ $service['slug'] }}" data-duration="{{ $service->duration_minutes }}" @selected(old('service_id') === $service['slug'])>{{ $service['name'] }} — {{ $service['details'] }}</option>
+                        <option value="{{ $service['slug'] }}" @selected(old('service_id') === $service['slug'])>{{ $service['name'] }} — {{ $service['details'] }}</option>
                     @endforeach
                 </select>
 
                 <div class="mt-5 grid gap-4 sm:grid-cols-2">
                     <div><label class="field-label" for="appointment_date">Tanggal</label><input class="form-control mt-2" id="appointment_date" name="appointment_date" type="date" min="{{ now()->toDateString() }}" value="{{ old('appointment_date', now()->addDay()->toDateString()) }}" required></div>
-                    <div><label class="field-label" for="appointment_time">Pilih waktu (mulai 07.00)</label><input class="form-control mt-2" id="appointment_time" name="appointment_time" type="time" min="07:00" max="21:30" step="60" lang="id-ID" value="{{ old('appointment_time', '09:30') }}" required><p id="booking-time-help" class="mt-2 text-[8px] leading-relaxed text-muted">Waktu terakhir menyesuaikan durasi layanan dan jam kerja capster agar selesai sebelum 22.00.</p></div>
+                    <div><label class="field-label" for="appointment_time">Pilih waktu (mulai {{ str_replace(':', '.', $storeOpenTime) }})</label><input class="form-control mt-2" id="appointment_time" name="appointment_time" type="time" min="{{ $storeOpenTime }}" max="{{ $latestBookingTime }}" step="60" lang="id-ID" value="{{ old('appointment_time', $storeOpenTime) }}" required><p id="booking-time-help" class="mt-2 text-[8px] leading-relaxed text-muted">Estimasi layanan {{ $serviceDurationMinutes }} menit. Slot berikutnya dapat dimulai tepat saat layanan sebelumnya selesai.</p></div>
                     <div><label class="field-label" for="name">Nama Anda</label><input class="form-control mt-2" id="name" name="name" value="{{ old('name') }}" placeholder="Nama lengkap" required></div>
                     <div><label class="field-label" for="phone">Nomor WhatsApp</label><input class="form-control mt-2" id="phone" name="phone" value="{{ old('phone') }}" placeholder="+62 812 3456 7890" required></div>
                 </div>
@@ -58,7 +58,7 @@
                 <input type="hidden" name="payment_method" value="cash">
                 <div class="mt-5 border border-ink/15 bg-cream p-4">
                     <p class="field-label">Pembayaran tunai di kasir</p>
-                    <p class="mt-2 text-[9px] leading-relaxed text-muted">Booking ditahan {{ config('payments.booking_cash_expiry_minutes') }} menit. Kasir akan mengonfirmasi booking setelah uang tunai diterima.</p>
+                    <p class="mt-2 text-[9px] leading-relaxed text-muted">Pembayaran berlaku {{ \App\Support\PaymentPolicy::expiryMinutes() }} menit. Jadwal baru terkunci setelah kasir mengonfirmasi DP 50% atau pelunasan.</p>
                 </div>
                 @if ($errors->any())
                     <div class="mt-4 border border-orange bg-orange/10 p-3 text-xs text-orange">{{ $errors->first() }}</div>

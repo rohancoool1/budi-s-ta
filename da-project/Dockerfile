@@ -36,9 +36,11 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         curl \
         libicu-dev \
+        libxml2-dev \
         libonig-dev \
     && docker-php-ext-install \
         bcmath \
+        dom \
         intl \
         mbstring \
         pcntl \
@@ -59,6 +61,7 @@ RUN mkdir -p \
         storage/framework/views \
         storage/logs \
         bootstrap/cache \
+    && rm -rf public/storage \
     && chown -R www-data:www-data storage bootstrap/cache \
     && php artisan package:discover --ansi \
     && php artisan storage:link

@@ -59,4 +59,15 @@ class Booking extends Model
     {
         return $this->hasOne(Order::class)->latestOfMany();
     }
+
+    public function getWorkflowLabelAttribute(): string
+    {
+        return match ($this->status) {
+            'deposit' => 'Sudah DP 50%',
+            'confirmed' => 'Lunas / akan datang',
+            'completed' => 'Selesai',
+            'cancelled' => 'Dibatalkan',
+            default => 'Belum bayar',
+        };
+    }
 }

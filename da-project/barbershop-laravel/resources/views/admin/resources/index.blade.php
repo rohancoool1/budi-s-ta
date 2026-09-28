@@ -53,19 +53,22 @@
                                         Rp {{ number_format((int) $value, 0, ',', '.') }}
                                     @elseif ($format === 'boolean')
                                         <span class="inline-flex border px-2 py-1 text-[8px] font-black uppercase tracking-[.1em] {{ $value ? 'border-sage bg-sage/20' : 'border-ink/20 text-muted' }}">{{ $value ? 'Ya' : 'Tidak' }}</span>
+                                    @elseif ($format === 'setting_key')
+                                        {{ ['phone' => 'Nomor telepon / WhatsApp', 'service_duration_minutes' => 'Durasi layanan (menit)', 'payment_expiry_minutes' => 'Batas pembayaran (menit)', 'store_open_time' => 'Jam buka toko', 'store_close_time' => 'Jam tutup toko'][$value] ?? \Illuminate\Support\Str::headline((string) $value) }}
                                     @elseif ($format === 'status')
                                         @php
                                             $statusLabel = match (true) {
-                                                $value === 'pending' && $resource === 'bookings' => 'Menunggu pembayaran',
-                                                $value === 'confirmed' && $resource === 'bookings' => 'Dikonfirmasi',
-                                                $value === 'pending' && $resource === 'orders' && $record->booking_id => 'Akan datang',
-                                                $value === 'pending' && $resource === 'orders' && $record->payment_status === 'unpaid' => 'Menunggu bayar',
-                                                default => ['pending' => 'Menunggu', 'ready' => 'Siap diambil', 'completed' => 'Selesai', 'cancelled' => 'Dibatalkan', 'new' => 'Baru', 'in_progress' => 'Ditangani', 'replied' => 'Dibalas', 'archived' => 'Diarsipkan'][$value] ?? str_replace('_', ' ', (string) $value),
+                                                $resource === 'bookings' => $record->workflow_label,
+                                                $resource === 'orders' => $record->workflow_label,
+                                                default => ['pending' => 'Menunggu', 'completed' => 'Selesai', 'cancelled' => 'Dibatalkan', 'new' => 'Baru', 'in_progress' => 'Ditangani', 'replied' => 'Dibalas', 'archived' => 'Diarsipkan'][$value] ?? str_replace('_', ' ', (string) $value),
                                             };
+                                            $statusIsPositive = ($resource === 'bookings' && in_array($record->status, ['deposit', 'confirmed', 'completed'], true))
+                                                || ($resource === 'orders' && in_array($record->workflow_status, ['upcoming', 'waiting', 'completed', 'collected'], true));
+                                            $statusIsCancelled = $value === 'cancelled';
                                         @endphp
-                                        <span @if($resource === 'bookings') data-live-booking="{{ $record->id }}" @elseif($resource === 'orders') data-live-order="{{ $record->id }}" @endif class="inline-flex border border-orange/40 bg-orange/10 px-2 py-1 text-[8px] font-black uppercase tracking-[.1em] text-orange">{{ $statusLabel }}</span>
+                                        <span @if($resource === 'bookings') data-live-booking="{{ $record->id }}" @elseif($resource === 'orders') data-live-order="{{ $record->id }}" @endif class="inline-flex border px-2 py-1 text-[8px] font-black uppercase tracking-[.1em] {{ $statusIsPositive ? 'border-green-600/40 bg-green-50 text-green-700' : ($statusIsCancelled ? 'border-red-300 bg-red-50 text-red-700' : 'border-orange/40 bg-orange/10 text-orange') }}">{{ $statusLabel }}</span>
                                     @elseif ($format === 'payment')
-                                        <span data-live-payment-order="{{ $resource === 'bookings' ? $record->transaction?->id : $record->id }}" class="inline-flex border px-2 py-1 text-[8px] font-black uppercase tracking-[.1em] {{ $value === 'paid' ? 'border-green-600/40 bg-green-50 text-green-700' : 'border-orange/40 bg-orange/10 text-orange' }}">{{ ['unpaid' => 'Belum dibayar', 'paid' => 'Lunas', 'refunded' => 'Dikembalikan'][$value] ?? ($value ?: 'Belum dibuat') }}</span>
+                                        <span data-live-payment-order="{{ $resource === 'bookings' ? $record->transaction?->id : $record->id }}" class="inline-flex border px-2 py-1 text-[8px] font-black uppercase tracking-[.1em] {{ $value === 'paid' ? 'border-green-600/40 bg-green-50 text-green-700' : 'border-orange/40 bg-orange/10 text-orange' }}">{{ ['unpaid' => 'Belum dibayar', 'partial' => 'Sudah DP 50%', 'paid' => 'Lunas', 'refunded' => 'Dikembalikan'][$value] ?? ($value ?: 'Belum dibuat') }}</span>
                                     @elseif ($format === 'source')
                                         {{ $record->booking_id || $value === 'booking' ? 'Booking' : ($value === 'cashier' ? 'Walk-in / Kasir' : 'Pesanan aplikasi') }}
                                     @elseif ($format === 'transaction_type')

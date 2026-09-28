@@ -161,7 +161,7 @@ class PosController extends Controller
                 'subtotal' => $subtotal,
                 'discount' => $discount,
                 'total' => $subtotal - $discount,
-                'status' => $hasService ? 'pending' : 'completed',
+                'status' => 'pending',
                 'notes' => $data['notes'] ?? null,
             ]);
 

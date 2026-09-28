@@ -65,7 +65,7 @@ class PosTest extends TestCase
         $this->assertSame(now()->toDateString(), $order->queue_date->toDateString());
         $this->assertSame('A001', $order->queue_code);
         $this->assertSame('10:00', $order->service_starts_at->format('H:i'));
-        $this->assertSame('10:50', $order->service_ends_at->format('H:i'));
+        $this->assertSame('10:45', $order->service_ends_at->format('H:i'));
         $this->assertSame($service->price + ($product->price * 2) - 10000, $order->total);
         $this->assertDatabaseHas('products', ['id' => $product->id, 'stock' => $startingStock - 2]);
         $this->actingAs($admin)
@@ -80,9 +80,14 @@ class PosTest extends TestCase
             ->assertRedirect(route('admin.resources.edit', ['resource' => 'orders', 'record' => $order]));
 
         $this->assertSame('paid', $order->fresh()->payment_status);
-        $this->assertSame('completed', $order->fresh()->status);
+        $this->assertSame('pending', $order->fresh()->status);
         $this->assertSame('paid', $payment->fresh()->status);
         $this->assertNotNull($order->fresh()->paid_at);
+
+        $this->actingAs($admin)
+            ->post(route('admin.orders.complete', $order))
+            ->assertRedirect();
+        $this->assertSame('completed', $order->fresh()->status);
 
         $this->actingAs($admin)->post(route('admin.orders.confirm-cash', $order))->assertRedirect();
         $this->assertSame(1, Payment::where('order_id', $order->id)->count());
@@ -104,10 +109,30 @@ class PosTest extends TestCase
         $order = Order::where('customer_name', 'Pembeli Produk Kasir')->firstOrFail();
 
         $this->assertSame('product', $order->transaction_type);
-        $this->assertSame('completed', $order->status);
+        $this->assertSame('pending', $order->status);
+        $this->assertSame('Belum bayar', $order->workflow_label);
         $this->assertNull($order->queue_date);
         $this->assertNull($order->queue_number);
         $this->assertNull($order->queue_code);
+
+        $this->actingAs($admin)
+            ->post(route('admin.orders.confirm-cash', $order))
+            ->assertRedirect();
+
+        $order->refresh();
+        $this->assertSame('paid', $order->payment_status);
+        $this->assertSame('pending', $order->status);
+        $this->assertSame('Sudah dibayar / menunggu', $order->workflow_label);
+
+        $this->actingAs($admin)->put(route('admin.resources.update', [
+            'resource' => 'orders',
+            'record' => $order,
+        ]), [
+            'status' => 'completed',
+            'notes' => null,
+        ])->assertRedirect();
+
+        $this->assertSame('Sudah diambil', $order->fresh()->workflow_label);
     }
 
     public function test_pos_and_booking_share_one_queue_and_one_barber_schedule(): void
@@ -129,6 +154,11 @@ class PosTest extends TestCase
             'payment_method' => 'cash',
         ])->assertRedirect();
 
+        $bookingBeforeWalkIn = Booking::where('name', 'Booking Sebelum Walk-in')->firstOrFail();
+        $this->actingAs($admin)
+            ->post(route('admin.orders.confirm-deposit', $bookingBeforeWalkIn->transaction))
+            ->assertRedirect();
+
         $this->actingAs($admin)->post(route('admin.pos.store'), [
             'customer_name' => 'Walk-in Bentrok Booking',
             'service_id' => $service->id,
@@ -142,7 +172,7 @@ class PosTest extends TestCase
             'customer_name' => 'Walk-in Setelah Booking',
             'service_id' => $service->id,
             'barber_id' => $barber->id,
-            'service_time' => '10:50',
+            'service_time' => '10:45',
             'discount' => 0,
             'payment_method' => 'cash',
         ])->assertRedirect();
@@ -163,7 +193,7 @@ class PosTest extends TestCase
             'artist_id' => $barber->slug,
             'service_id' => $service->slug,
             'appointment_date' => $date,
-            'appointment_time' => '11:40',
+            'appointment_time' => '11:30',
             'name' => 'Booking Setelah Walk-in',
             'phone' => '081211110003',
             'payment_method' => 'cash',
@@ -176,8 +206,8 @@ class PosTest extends TestCase
         $this->assertSame('A001', $bookingOrder->queue_code);
         $this->assertSame('A002', $walkInOrder->queue_code);
         $this->assertSame('A003', $lastBookingOrder->queue_code);
-        $this->assertSame('10:50', $walkInOrder->service_starts_at->format('H:i'));
-        $this->assertSame('11:40', $walkInOrder->service_ends_at->format('H:i'));
+        $this->assertSame('10:45', $walkInOrder->service_starts_at->format('H:i'));
+        $this->assertSame('11:30', $walkInOrder->service_ends_at->format('H:i'));
         $this->travelBack();
     }
 
@@ -244,6 +274,7 @@ class PosTest extends TestCase
 
         $booking = Booking::where('name', 'Booking Masuk Riwayat')->firstOrFail();
         $order = Order::where('booking_id', $booking->id)->firstOrFail();
+        $this->actingAs($admin)->post(route('admin.orders.confirm-cash', $order))->assertRedirect();
         $payload = [
             'booking_type' => 'artist',
             'artist_id' => 'made',

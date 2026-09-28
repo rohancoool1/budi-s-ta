@@ -6,7 +6,7 @@
     <meta name="description" content="@yield('description', 'Layanan capster dan produk perawatan HOMCUTS di Bulurokeng, Makassar.')">
     <meta property="og:title" content="@yield('title', 'HOMCUTS Barbershop')">
     <meta property="og:description" content="Potongan presisi, layanan capster, dan produk perawatan di Bulurokeng, Makassar.">
-    <meta property="og:image" content="{{ url('/homcuts-storefront.png') }}">
+    <meta property="og:image" content="{{ asset($siteSettings->get('storefront_image', 'homcuts-storefront.png')) }}">
     <link rel="icon" type="image/png" href="{{ asset('homcuts-logo-transparent.png') }}">
     <title>@yield('title', 'HOMCUTS') · HOMCUTS</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -66,7 +66,7 @@
             <p class="mt-2 font-display italic text-white/55">Potongan tepat. Hari lebih baik.</p>
         </div>
         <div class="footer-column"><b>KUNJUNGI</b><p>{{ $siteSettings->get('address_line_1', 'Jl. Ir. Sutami') }}<br>{{ $siteSettings->get('address_line_2', 'Bulurokeng, Makassar') }}</p><a href="{{ route('contact') }}">Lihat kontak →</a></div>
-        <div class="footer-column"><b>JAM BUKA</b><p>{{ $siteSettings->get('hours_weekday', 'Selasa—Jumat 07:00—22:00') }}<br>{{ $siteSettings->get('hours_weekend', 'Sabtu—Minggu 07:00—22:00') }}<br>{{ $siteSettings->get('hours_closed', 'Senin tutup') }}</p><a href="{{ route('booking') }}">Booking kursi →</a></div>
+        <div class="footer-column"><b>JAM BUKA</b><p>Selasa—Jumat {{ $storeOpenTime }}—{{ $storeCloseTime }}<br>Sabtu—Minggu {{ $storeOpenTime }}—{{ $storeCloseTime }}<br>{{ $siteSettings->get('hours_closed', 'Senin tutup') }}</p><a href="{{ route('booking') }}">Booking kursi →</a></div>
         <div class="footer-column"><b>TERHUBUNG</b><a href="{{ $siteSettings->get('instagram_url', 'https://instagram.com/homcuts_') }}" target="_blank" rel="noopener">Instagram {{ $siteSettings->get('instagram_handle', '@homcuts_') }} ↗</a><a href="{{ $siteSettings->get('tiktok_url', 'https://www.tiktok.com/@homcuts') }}" target="_blank" rel="noopener">TikTok {{ $siteSettings->get('tiktok_handle', '@homcuts') }} ↗</a><a href="{{ route('gallery') }}">Galeri rambut ↗</a></div>
     </footer>
 

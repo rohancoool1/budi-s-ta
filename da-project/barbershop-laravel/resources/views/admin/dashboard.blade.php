@@ -28,13 +28,13 @@
     <section class="mt-8 border border-ink/15 bg-paper">
         <div class="flex flex-col justify-between gap-4 border-b border-ink/15 p-5 sm:flex-row sm:items-center">
             <div><p class="text-[9px] font-black uppercase tracking-[.15em] text-orange">Pekerjaan tertunda</p><h2 class="mt-1 font-display text-2xl">Booking yang belum selesai</h2></div>
-            <a class="text-[8px] font-black uppercase tracking-[.12em]" href="{{ route('admin.resources.index', ['resource' => 'bookings', 'status' => 'active']) }}">Kelola semua booking →</a>
+            <a class="text-[8px] font-black uppercase tracking-[.12em]" href="{{ route('admin.resources.index', ['resource' => 'orders', 'tab' => 'booking']) }}">Kelola semua booking →</a>
         </div>
         <div class="divide-y divide-ink/10 md:grid md:grid-cols-2 md:divide-y-0">
             @forelse ($activeBookings as $booking)
                 <a href="{{ route('admin.resources.edit', ['resource' => 'bookings', 'record' => $booking]) }}" class="flex items-center justify-between gap-4 border-b border-ink/10 p-5 hover:bg-cream md:odd:border-r">
                     <div><p class="text-sm font-bold">{{ $booking->name }}</p><p class="mt-1 text-[10px] text-muted">{{ $booking->appointment_date->translatedFormat('d M Y') }} · {{ substr($booking->appointment_time, 0, 5) }} · {{ $booking->service?->name ?? $booking->service_id }} · {{ $booking->barber?->name }}</p></div>
-                    <span data-live-payment-order="{{ $booking->transaction?->id }}" class="shrink-0 border px-2 py-1 text-[8px] font-black uppercase tracking-[.1em] {{ $booking->transaction?->payment_status === 'paid' ? 'border-green-600/40 bg-green-50 text-green-700' : 'border-orange/40 bg-orange/10 text-orange' }}">{{ $booking->transaction?->payment_status === 'paid' ? 'Lunas' : 'Belum dibayar' }}</span>
+                    <span data-live-booking="{{ $booking->id }}" class="shrink-0 border px-2 py-1 text-[8px] font-black uppercase tracking-[.1em] {{ in_array($booking->status, ['deposit', 'confirmed', 'completed'], true) ? 'border-green-600/40 bg-green-50 text-green-700' : 'border-orange/40 bg-orange/10 text-orange' }}">{{ $booking->workflow_label }}</span>
                 </a>
             @empty
                 <p class="p-8 text-center text-sm text-muted md:col-span-2">Semua booking sudah diselesaikan.</p>
@@ -60,8 +60,7 @@
                             'customer_name' => 'Pelanggan',
                             'barber_name' => 'Capster',
                             'transaction_type' => 'Jenis',
-                            'status' => 'Proses',
-                            'payment_status' => 'Pembayaran',
+                            'status' => 'Status',
                             'total' => 'Total',
                         ] as $sortKey => $label)
                             @php
@@ -88,12 +87,11 @@
                             <td class="px-3 py-4 2xl:px-4" data-label="Pelanggan"><a class="text-xs font-bold underline decoration-ink/20 underline-offset-4" href="{{ route('admin.resources.edit', ['resource' => 'orders', 'record' => $order]) }}">#{{ str_pad($order->id, 5, '0', STR_PAD_LEFT) }} · {{ $order->customer_name }}</a></td>
                             <td class="px-3 py-4 text-[10px] font-bold 2xl:px-4" data-label="Capster">{{ $order->barber_name ?? '—' }}</td>
                             <td class="px-3 py-4 text-[10px] 2xl:px-4" data-label="Jenis">{{ ['service' => 'Layanan', 'product' => 'Produk', 'mixed' => 'Layanan + produk'][$order->transaction_type] ?? $order->transaction_type }}</td>
-                            <td class="px-3 py-4 2xl:px-4" data-label="Proses"><span data-live-order="{{ $order->id }}" class="text-[8px] font-black uppercase tracking-[.1em]">{{ $order->status === 'pending' && $order->booking_id ? 'Akan datang' : ($order->status === 'pending' && $order->payment_status === 'unpaid' ? 'Menunggu bayar' : (['pending' => 'Menunggu', 'ready' => 'Siap diambil', 'completed' => 'Selesai', 'cancelled' => 'Dibatalkan'][$order->status] ?? $order->status)) }}</span></td>
-                            <td class="px-3 py-4 2xl:px-4" data-label="Pembayaran"><span data-live-payment-order="{{ $order->id }}" class="inline-flex border px-2 py-1 text-[8px] font-black uppercase tracking-[.1em] {{ $order->payment_status === 'paid' ? 'border-green-600/40 bg-green-50 text-green-700' : 'border-orange/40 bg-orange/10 text-orange' }}">{{ ['unpaid' => 'Belum dibayar', 'paid' => 'Lunas', 'refunded' => 'Dikembalikan'][$order->payment_status] ?? $order->payment_status }}</span></td>
+                            <td class="px-3 py-4 2xl:px-4" data-label="Status"><span data-live-order="{{ $order->id }}" class="inline-flex border px-2 py-1 text-[8px] font-black uppercase tracking-[.1em] {{ in_array($order->workflow_status, ['upcoming', 'waiting', 'completed', 'collected'], true) ? 'border-green-600/40 bg-green-50 text-green-700' : 'border-orange/40 bg-orange/10 text-orange' }}">{{ $order->workflow_label }}</span></td>
                             <td class="px-3 py-4 font-display text-lg 2xl:px-4" data-label="Total">Rp {{ number_format($order->total, 0, ',', '.') }}</td>
                         </tr>
                     @empty
-                        <tr><td class="admin-table-empty p-8 text-center text-sm text-muted" colspan="8">Belum ada transaksi.</td></tr>
+                        <tr><td class="admin-table-empty p-8 text-center text-sm text-muted" colspan="7">Belum ada transaksi.</td></tr>
                     @endforelse
                 </tbody>
             </table>

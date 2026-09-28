@@ -6,10 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\Barber;
 use App\Models\Booking;
 use App\Models\Order;
+use App\Models\SiteSetting;
 use App\Services\BookingAvailabilityService;
 use App\Services\BookingTransactionService;
 use App\Services\PaymentService;
 use App\Support\AdminResources;
+use App\Support\ServiceSchedule;
+use App\Support\PaymentPolicy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -28,8 +31,16 @@ class ResourceController extends Controller
         private readonly PaymentService $payments,
     ) {}
 
-    public function index(Request $request, string $resource): View
+    public function index(Request $request, string $resource): View|RedirectResponse
     {
+        if ($resource === 'bookings') {
+            return to_route('admin.resources.index', ['resource' => 'orders', 'tab' => 'booking']);
+        }
+
+        if ($resource === 'orders') {
+            return $this->transactionIndex($request);
+        }
+
         $definition = AdminResources::get($resource);
         $query = $definition['model']::query();
 
@@ -54,24 +65,6 @@ class ResourceController extends Controller
             });
         }
 
-        if ($resource === 'orders') {
-            $this->applyTransactionFilters($query, $request);
-        }
-
-        if ($resource === 'bookings') {
-            $bookingStatus = $request->string('status')->toString();
-
-            if ($bookingStatus === 'active') {
-                $query->whereIn('status', ['pending', 'confirmed']);
-            } elseif (in_array($bookingStatus, ['pending', 'confirmed', 'completed', 'cancelled'], true)) {
-                $query->where('status', $bookingStatus);
-            }
-
-            if (in_array($request->string('payment')->toString(), ['unpaid', 'paid', 'refunded'], true)) {
-                $query->whereHas('transaction', fn ($orderQuery) => $orderQuery->where('payment_status', $request->string('payment')->toString()));
-            }
-        }
-
         $resourceFilters = $this->resourceFilters($resource, $definition);
         $this->applyResourceFilters($query, $request, $resourceFilters);
         $sortOptions = $this->sortOptions($definition);
@@ -92,6 +85,111 @@ class ResourceController extends Controller
         $records = $query->paginate(15)->withQueryString();
 
         return view('admin.resources.index', compact('definition', 'records', 'resource', 'resourceFilters', 'sortOptions'));
+    }
+
+    private function transactionIndex(Request $request): View
+    {
+        $bookingDefinition = AdminResources::get('bookings');
+        $orderDefinition = AdminResources::get('orders');
+        $allowedTabs = ['booking', 'product', 'walkin'];
+        $requestedTab = $request->string('tab')->toString();
+
+        if ($requestedTab === '') {
+            $requestedTab = match ($request->string('source')->toString()) {
+                'booking' => 'booking',
+                'online' => 'product',
+                'cashier' => 'walkin',
+                default => 'booking',
+            };
+        }
+        $activeTab = in_array($requestedTab, $allowedTabs, true) ? $requestedTab : 'booking';
+
+        $bookingQuery = Booking::query()->with($bookingDefinition['with']);
+        $productQuery = Order::query()->with($orderDefinition['with'])
+            ->whereNull('booking_id')
+            ->where('channel', 'online');
+        $walkinQuery = Order::query()->with($orderDefinition['with'])
+            ->whereNull('booking_id')
+            ->where('channel', 'cashier');
+
+        $tables = [
+            'booking' => [
+                'label' => 'Booking',
+                'description' => 'Booking yang dibuat pelanggan maupun admin.',
+                'resource' => 'bookings',
+                'definition' => $bookingDefinition,
+                'query' => $bookingQuery,
+                'page' => 'booking_page',
+            ],
+            'product' => [
+                'label' => 'Pesanan produk',
+                'description' => 'Pesanan produk yang dibuat melalui toko pelanggan.',
+                'resource' => 'orders',
+                'definition' => array_replace($orderDefinition, [
+                    'columns' => [
+                        ['key' => 'id', 'label' => 'Transaksi'],
+                        ['key' => 'created_at', 'label' => 'Waktu pesan', 'format' => 'datetime'],
+                        ['key' => 'customer_name', 'label' => 'Pelanggan'],
+                        ['key' => 'transaction_type', 'label' => 'Jenis', 'format' => 'transaction_type'],
+                        ['key' => 'status', 'label' => 'Status pesanan', 'format' => 'status'],
+                        ['key' => 'total', 'label' => 'Total', 'format' => 'money'],
+                    ],
+                ]),
+                'query' => $productQuery,
+                'page' => 'product_page',
+            ],
+            'walkin' => [
+                'label' => 'Walk-in',
+                'description' => 'Transaksi pelanggan yang dicatat melalui Kasir POS.',
+                'resource' => 'orders',
+                'definition' => array_replace($orderDefinition, [
+                    'columns' => [
+                        ['key' => 'id', 'label' => 'Transaksi'],
+                        ['key' => 'queue_code', 'label' => 'Antrean', 'sort' => 'queue_number'],
+                        ['key' => 'service_starts_at', 'label' => 'Jadwal layanan', 'format' => 'datetime'],
+                        ['key' => 'created_at', 'label' => 'Waktu dibuat', 'format' => 'datetime'],
+                        ['key' => 'customer_name', 'label' => 'Pelanggan'],
+                        ['key' => 'barber_name', 'label' => 'Capster', 'sort' => 'barber_name'],
+                        ['key' => 'transaction_type', 'label' => 'Jenis', 'format' => 'transaction_type'],
+                        ['key' => 'status', 'label' => 'Status', 'format' => 'status'],
+                        ['key' => 'total', 'label' => 'Total', 'format' => 'money'],
+                    ],
+                ]),
+                'query' => $walkinQuery,
+                'page' => 'walkin_page',
+            ],
+        ];
+
+        foreach ($tables as $key => &$table) {
+            $sortParameter = $key.'_sort';
+            $directionParameter = $key.'_direction';
+            $sortOptions = $this->sortOptions($table['definition']);
+            $requestedSort = $request->string($sortParameter)->toString();
+            $requestedDirection = $request->string($directionParameter)->toString();
+            [$defaultSort, $defaultDirection] = $table['definition']['order'];
+            $sort = array_key_exists($requestedSort, $sortOptions) ? $requestedSort : $defaultSort;
+            $direction = in_array($requestedDirection, ['asc', 'desc'], true) ? $requestedDirection : $defaultDirection;
+
+            $this->applySort($table['query'], $table['resource'], $sort, $direction);
+            if ($sort !== 'id') {
+                $table['query']->orderBy('id', $direction);
+            }
+
+            $table['sort'] = $sort;
+            $table['direction'] = $direction;
+            $table['sort_parameter'] = $sortParameter;
+            $table['direction_parameter'] = $directionParameter;
+            $table['region'] = 'transaction-'.$key;
+            $table['records'] = $table['query']->paginate(15, ['*'], $table['page'])->withQueryString();
+            unset($table['query']);
+        }
+        unset($table);
+
+        return view('admin.transactions.index', [
+            'definition' => $orderDefinition,
+            'tables' => $tables,
+            'activeTab' => $activeTab,
+        ]);
     }
 
     public function create(string $resource): View
@@ -156,6 +254,26 @@ class ResourceController extends Controller
         $previousStatus = $model instanceof Order ? $model->status : null;
         $storedData = $this->storeUploads($request, $definition, $data, $model);
 
+        $requestedWorkflowStatus = $model instanceof Order ? $storedData['status'] : null;
+        if ($model instanceof Order && $requestedWorkflowStatus === 'completed' && $model->payment_status !== 'paid') {
+            throw ValidationException::withMessages([
+                'status' => 'Transaksi belum dapat diselesaikan. Simpan status DP atau lunas terlebih dahulu setelah uang diterima.',
+            ]);
+        }
+        if ($model instanceof Order && $requestedWorkflowStatus === 'deposit' && ! $model->booking_id) {
+            throw ValidationException::withMessages([
+                'status' => 'Status DP hanya tersedia untuk transaksi booking.',
+            ]);
+        }
+        if ($model instanceof Order && $requestedWorkflowStatus === 'pending' && in_array($model->payment_status, ['partial', 'paid'], true)) {
+            throw ValidationException::withMessages([
+                'status' => 'Pembayaran yang sudah diterima tidak dapat dikembalikan menjadi belum bayar.',
+            ]);
+        }
+        if ($model instanceof Order && in_array($requestedWorkflowStatus, ['deposit', 'paid'], true)) {
+            $storedData['status'] = 'pending';
+        }
+
         if ($model instanceof Order && $previousStatus === 'cancelled' && $storedData['status'] !== 'cancelled') {
             throw ValidationException::withMessages([
                 'status' => 'Transaksi yang sudah dibatalkan tidak dapat diaktifkan kembali. Buat transaksi baru.',
@@ -167,6 +285,14 @@ class ResourceController extends Controller
             $model = $this->payments->cancelOrder($model);
         } else {
             $model->fill($storedData)->save();
+        }
+
+        if ($model instanceof Order && $requestedWorkflowStatus === 'deposit') {
+            $this->payments->confirmDeposit($model, $request->user());
+            $model->refresh();
+        } elseif ($model instanceof Order && $requestedWorkflowStatus === 'paid') {
+            $this->payments->confirmCash($model, $request->user());
+            $model->refresh();
         }
 
         if ($model instanceof Order && $model->booking_id && $model->status === 'completed') {
@@ -200,19 +326,12 @@ class ResourceController extends Controller
             'ignore_booking' => ['nullable', 'integer', 'exists:bookings,id'],
         ]);
         $this->payments->expireDuePayments();
-        $ignoredBooking = isset($data['ignore_booking'])
-            ? Booking::query()->find((int) $data['ignore_booking'])
-            : null;
-        $duration = $ignoredBooking && $ignoredBooking->service_id === $data['service_id']
-            ? $ignoredBooking->duration_minutes
-            : null;
         $slot = $this->availability->resolve(
             $data['service_id'],
             $data['appointment_date'],
             $data['appointment_time'],
             $data['booking_type'] === 'artist' ? (($data['artist_id'] ?? null) ?: null) : null,
             isset($data['ignore_booking']) ? (int) $data['ignore_booking'] : null,
-            durationMinutes: $duration,
         );
 
         return response()->json([
@@ -260,7 +379,65 @@ class ResourceController extends Controller
             $rules[$field['name']] = $fieldRules;
         }
 
-        return $request->validate($rules);
+        $data = $request->validate($rules);
+        $settingKey = $record instanceof SiteSetting
+            ? $record->key
+            : ($definition['model'] === SiteSetting::class ? ($data['key'] ?? null) : null);
+
+        if ($settingKey === 'service_duration_minutes') {
+            $duration = filter_var($data['value'] ?? null, FILTER_VALIDATE_INT);
+
+            if ($duration === false || $duration < ServiceSchedule::MIN_DURATION || $duration > ServiceSchedule::MAX_DURATION) {
+                throw ValidationException::withMessages([
+                    'value' => 'Durasi layanan harus berupa angka antara '.ServiceSchedule::MIN_DURATION.'–'.ServiceSchedule::MAX_DURATION.' menit.',
+                ]);
+            }
+
+            $data['value'] = (string) $duration;
+        }
+
+        if ($settingKey === 'payment_expiry_minutes') {
+            $minutes = filter_var($data['value'] ?? null, FILTER_VALIDATE_INT);
+
+            if ($minutes === false || $minutes < PaymentPolicy::MIN_EXPIRY_MINUTES || $minutes > PaymentPolicy::MAX_EXPIRY_MINUTES) {
+                throw ValidationException::withMessages([
+                    'value' => 'Batas pembayaran harus berupa angka antara '.PaymentPolicy::MIN_EXPIRY_MINUTES.'–'.PaymentPolicy::MAX_EXPIRY_MINUTES.' menit.',
+                ]);
+            }
+
+            $data['value'] = (string) $minutes;
+        }
+
+        if (in_array($settingKey, ['store_open_time', 'store_close_time'], true)) {
+            $time = (string) ($data['value'] ?? '');
+
+            if (! preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/', $time)) {
+                throw ValidationException::withMessages([
+                    'value' => 'Jam operasional harus menggunakan format 24 jam HH:MM.',
+                ]);
+            }
+
+            $data['value'] = $time;
+        }
+
+        if (in_array($settingKey, ['service_duration_minutes', 'store_open_time', 'store_close_time'], true)) {
+            $candidateSettings = ServiceSchedule::settings()->put($settingKey, $data['value']);
+            $operatingMinutes = ServiceSchedule::operatingMinutes($candidateSettings);
+
+            if ($operatingMinutes <= 0) {
+                throw ValidationException::withMessages([
+                    'value' => 'Jam tutup harus lebih akhir daripada jam buka pada hari yang sama.',
+                ]);
+            }
+
+            if (ServiceSchedule::durationMinutes($candidateSettings) > $operatingMinutes) {
+                throw ValidationException::withMessages([
+                    'value' => 'Rentang jam operasional harus lebih panjang atau sama dengan durasi layanan.',
+                ]);
+            }
+        }
+
+        return $data;
     }
 
     private function storeUploads(Request $request, array $definition, array $data, ?Model $record = null): array
@@ -311,6 +488,28 @@ class ResourceController extends Controller
     {
         $this->payments->expireDuePayments();
         $wasExisting = $booking->exists;
+        $requestedStatus = $data['status'];
+        $currentOrder = $booking->exists ? $booking->transaction()->first() : null;
+
+        if ($requestedStatus === 'completed' && (! $currentOrder || $currentOrder->payment_status !== 'paid')) {
+            throw ValidationException::withMessages([
+                'status' => 'Booking belum dapat diselesaikan. Simpan status lunas terlebih dahulu setelah pembayaran diterima.',
+            ]);
+        }
+        if ($requestedStatus === 'pending' && $currentOrder && in_array($currentOrder->payment_status, ['partial', 'paid'], true)) {
+            throw ValidationException::withMessages([
+                'status' => 'Pembayaran yang sudah diterima tidak dapat dikembalikan menjadi belum bayar.',
+            ]);
+        }
+        if ($requestedStatus === 'deposit' && $currentOrder?->payment_status === 'paid') {
+            throw ValidationException::withMessages([
+                'status' => 'Booking sudah lunas dan tidak dapat diturunkan menjadi DP.',
+            ]);
+        }
+
+        if (in_array($requestedStatus, ['deposit', 'confirmed'], true)) {
+            $data['status'] = $booking->exists ? $booking->status : 'pending';
+        }
 
         if ($data['booking_type'] === 'artist' && empty($data['artist_id'])) {
             throw ValidationException::withMessages([
@@ -336,11 +535,7 @@ class ResourceController extends Controller
             $scheduleChanged = false;
         }
 
-        $snapshotDuration = $booking->exists && $booking->service_id === $data['service_id']
-            ? $booking->duration_minutes
-            : null;
-
-        [$booking, $order] = DB::transaction(function () use ($booking, $data, $preferredBarber, $request, $scheduleChanged, $snapshotDuration, $wasExisting): array {
+        [$booking, $order] = DB::transaction(function () use ($booking, $data, $preferredBarber, $request, $scheduleChanged, $wasExisting): array {
             $slot = null;
             if ($scheduleChanged) {
                 $slot = $this->availability->resolve(
@@ -350,7 +545,6 @@ class ResourceController extends Controller
                     $preferredBarber,
                     $booking->exists ? $booking->id : null,
                     true,
-                    $snapshotDuration,
                 );
             } elseif ($booking->exists && $booking->barber_id) {
                 Barber::query()->whereKey($booking->barber_id)->lockForUpdate()->first();
@@ -364,25 +558,19 @@ class ResourceController extends Controller
                 ? Order::query()->where('booking_id', $booking->id)->lockForUpdate()->first()
                 : null;
 
-            if ($data['status'] === 'confirmed' && (! $existingOrder || $existingOrder->payment_status !== 'paid')) {
-                throw ValidationException::withMessages([
-                    'status' => 'Status dikonfirmasi diberikan otomatis setelah pembayaran tunai diterima.',
-                ]);
-            }
-
             if ($existingOrder && $data['status'] !== 'cancelled' && $booking->service_id !== $data['service_id'] && $existingOrder->payments()->exists()) {
                 throw ValidationException::withMessages([
                     'service_id' => 'Layanan tidak dapat diganti setelah percobaan pembayaran dibuat. Batalkan booking dan buat yang baru.',
                 ]);
             }
 
-            if ($existingOrder && $data['status'] === 'cancelled' && $existingOrder->payment_status === 'paid') {
+            if ($existingOrder && $data['status'] === 'cancelled' && in_array($existingOrder->payment_status, ['partial', 'paid'], true)) {
                 throw ValidationException::withMessages([
-                    'status' => 'Booking yang sudah lunas harus melalui proses refund sebelum dibatalkan.',
+                    'status' => 'Booking yang sudah menerima DP atau pelunasan harus melalui proses refund sebelum dibatalkan.',
                 ]);
             }
 
-            if ($slot && in_array($data['status'], ['pending', 'confirmed'], true) && $slot['starts_at']->lte(now())) {
+            if ($slot && in_array($data['status'], ['pending', 'deposit', 'confirmed'], true) && $slot['starts_at']->lte(now())) {
                 throw ValidationException::withMessages([
                     'appointment_time' => 'Booking aktif harus memiliki waktu kunjungan di masa depan.',
                 ]);
@@ -396,7 +584,7 @@ class ResourceController extends Controller
                 'notes' => $data['notes'] ?? null,
             ]);
             if (! $booking->exists && $data['status'] === 'pending') {
-                $booking->hold_expires_at = now()->addMinutes(config('payments.booking_cash_expiry_minutes'));
+                $booking->hold_expires_at = now()->addMinutes(PaymentPolicy::expiryMinutes());
             }
             if ($slot) {
                 $this->availability->applyToBooking($booking, $slot);
@@ -427,6 +615,13 @@ class ResourceController extends Controller
             }
         }
 
+        if ($requestedStatus === 'deposit') {
+            $this->payments->confirmDeposit($order, $request->user());
+        } elseif ($requestedStatus === 'confirmed') {
+            $this->payments->confirmCash($order, $request->user());
+            $booking->update(['status' => 'confirmed', 'hold_expires_at' => null]);
+        }
+
         return $booking->refresh();
     }
 
@@ -446,11 +641,11 @@ class ResourceController extends Controller
             $query->where('transaction_type', $request->string('type')->toString());
         }
 
-        if (in_array($request->string('status')->toString(), ['pending', 'ready', 'completed', 'cancelled'], true)) {
+        if (in_array($request->string('status')->toString(), ['pending', 'completed', 'cancelled'], true)) {
             $query->where('status', $request->string('status')->toString());
         }
 
-        if (in_array($request->string('payment')->toString(), ['unpaid', 'paid', 'refunded'], true)) {
+        if (in_array($request->string('payment')->toString(), ['unpaid', 'partial', 'paid', 'refunded'], true)) {
             $query->where('payment_status', $request->string('payment')->toString());
         }
 
