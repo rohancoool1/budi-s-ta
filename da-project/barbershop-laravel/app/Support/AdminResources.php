@@ -13,9 +13,23 @@ use App\Models\SiteSetting;
 
 class AdminResources
 {
+    private const ROUTE_KEYS = [
+        'products',
+        'barbers',
+        'services',
+        'gallery',
+        'bookings',
+        'orders',
+        'messages',
+        'settings',
+        'capsters',
+    ];
+
     public static function keys(): array
     {
-        return [...array_keys(self::definitions()), 'capsters'];
+        // Route files are loaded during Artisan commands such as package:discover.
+        // Keep route registration independent from database-backed definitions.
+        return self::ROUTE_KEYS;
     }
 
     public static function get(string $key): array
