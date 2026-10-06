@@ -28,16 +28,24 @@ class BookingController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        $customer = $request->user('customer');
         $data = $request->validate([
             'booking_type' => ['required', 'in:service,artist'],
             'artist_id' => ['nullable', 'required_if:booking_type,artist', Rule::exists('barbers', 'slug')->where('is_active', true)],
             'service_id' => ['required', Rule::exists('services', 'slug')->where('is_active', true)],
             'appointment_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
             'appointment_time' => ['required', 'date_format:H:i'],
-            'name' => ['required', 'string', 'max:100'],
-            'phone' => ['required', 'string', 'max:30'],
             'payment_method' => ['required', 'in:cash'],
+            ...($customer ? [] : [
+                'name' => ['required', 'string', 'max:100'],
+                'phone' => ['required', 'string', 'max:30'],
+            ]),
         ]);
+
+        if ($customer) {
+            $data['name'] = $customer->name;
+            $data['phone'] = $customer->phone;
+        }
 
         $artist = $data['booking_type'] === 'artist' ? ($data['artist_id'] ?? null) : null;
         $this->ensureFutureTime($data['appointment_date'], $data['appointment_time']);
@@ -45,7 +53,7 @@ class BookingController extends Controller
         $expiryMinutes = PaymentPolicy::expiryMinutes();
         $expiresAt = now()->addMinutes($expiryMinutes);
 
-        [$booking, $order] = DB::transaction(function () use ($data, $artist, $expiresAt): array {
+        [$booking, $order] = DB::transaction(function () use ($data, $artist, $expiresAt, $customer): array {
             $slot = $this->availability->resolve(
                 $data['service_id'],
                 $data['appointment_date'],
@@ -55,6 +63,7 @@ class BookingController extends Controller
             );
             $booking = new Booking([
                 'booking_type' => $data['booking_type'],
+                'customer_id' => $customer?->id,
                 'name' => $data['name'],
                 'phone' => $data['phone'],
                 'status' => 'pending',

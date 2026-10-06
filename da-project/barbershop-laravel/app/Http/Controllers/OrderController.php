@@ -22,13 +22,22 @@ class OrderController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        $customer = $request->user('customer');
         $data = $request->validateWithBag('order', [
-            'name' => ['required', 'string', 'max:100'],
-            'phone' => ['required', 'string', 'max:30'],
-            'email' => ['nullable', 'email', 'max:150'],
             'payment_method' => ['required', 'in:cash'],
             'cart_json' => ['required', 'json'],
+            ...($customer ? [] : [
+                'name' => ['required', 'string', 'max:100'],
+                'phone' => ['required', 'string', 'max:30'],
+                'email' => ['nullable', 'email', 'max:150'],
+            ]),
         ]);
+
+        if ($customer) {
+            $data['name'] = $customer->name;
+            $data['phone'] = $customer->phone;
+            $data['email'] = $customer->email;
+        }
 
         $requestedItems = collect(json_decode($data['cart_json'], true))
             ->filter(fn ($item) => is_array($item) && (int) ($item['id'] ?? 0) > 0)
@@ -43,7 +52,7 @@ class OrderController extends Controller
             throw ValidationException::withMessages(['cart_json' => 'Keranjang Anda masih kosong.'])->errorBag('order');
         }
 
-        $order = DB::transaction(function () use ($data, $requestedItems): Order {
+        $order = DB::transaction(function () use ($data, $requestedItems, $customer): Order {
             $items = $requestedItems->map(function (array $item): array {
                 $product = Product::whereKey($item['id'])
                     ->where('is_active', true)
@@ -75,6 +84,7 @@ class OrderController extends Controller
             });
 
             $order = Order::create([
+                'customer_id' => $customer?->id,
                 'customer_name' => $data['name'],
                 'phone' => $data['phone'],
                 'email' => ($data['email'] ?? null) ?: null,

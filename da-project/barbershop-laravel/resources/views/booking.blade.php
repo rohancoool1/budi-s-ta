@@ -51,9 +51,19 @@
                 <div class="mt-5 grid gap-4 sm:grid-cols-2">
                     <div><label class="field-label" for="appointment_date">Tanggal</label><input class="form-control mt-2" id="appointment_date" name="appointment_date" type="date" min="{{ now()->toDateString() }}" value="{{ old('appointment_date', now()->addDay()->toDateString()) }}" required></div>
                     <div><label class="field-label" for="appointment_time">Pilih waktu (mulai {{ str_replace(':', '.', $storeOpenTime) }})</label><input class="form-control mt-2" id="appointment_time" name="appointment_time" type="time" min="{{ $storeOpenTime }}" max="{{ $latestBookingTime }}" step="60" lang="id-ID" value="{{ old('appointment_time', $storeOpenTime) }}" required><p id="booking-time-help" class="mt-2 text-[8px] leading-relaxed text-muted">Estimasi layanan {{ $serviceDurationMinutes }} menit. Slot berikutnya dapat dimulai tepat saat layanan sebelumnya selesai.</p></div>
-                    <div><label class="field-label" for="name">Nama Anda</label><input class="form-control mt-2" id="name" name="name" value="{{ old('name') }}" placeholder="Nama lengkap" required></div>
-                    <div><label class="field-label" for="phone">Nomor WhatsApp</label><input class="form-control mt-2" id="phone" name="phone" value="{{ old('phone') }}" placeholder="+62 812 3456 7890" required></div>
                 </div>
+                @if ($customer)
+                    <div class="mt-5 border border-sage bg-sage/15 p-4 text-xs leading-relaxed">
+                        <p class="field-label">Booking sebagai {{ $customer->name }}</p>
+                        <p class="mt-2 text-muted">Nama dan nomor WhatsApp dari akun Anda akan dipakai otomatis. <a class="border-b border-current text-ink" href="{{ route('customer.dashboard') }}">Ubah data akun</a></p>
+                    </div>
+                @else
+                    <div class="mt-5 grid gap-4 sm:grid-cols-2">
+                        <div><label class="field-label" for="name">Nama Anda</label><input class="form-control mt-2" id="name" name="name" value="{{ old('name') }}" placeholder="Nama lengkap" required></div>
+                        <div><label class="field-label" for="phone">Nomor WhatsApp</label><input class="form-control mt-2" id="phone" name="phone" value="{{ old('phone') }}" placeholder="+62 812 3456 7890" required></div>
+                    </div>
+                    <p class="mt-4 text-[9px] leading-relaxed text-muted">Sudah punya akun? <a class="border-b border-current text-ink" href="{{ route('customer.login') }}">Masuk agar data terisi otomatis</a>.</p>
+                @endif
                 <div id="booking-availability" class="mt-4 hidden border px-3 py-3 text-xs" role="status" aria-live="polite"></div>
                 <input type="hidden" name="payment_method" value="cash">
                 <div class="mt-5 border border-ink/15 bg-cream p-4">

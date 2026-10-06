@@ -11,6 +11,7 @@ class Booking extends Model
 {
     protected $fillable = [
         'booking_type',
+        'customer_id',
         'artist_id',
         'barber_id',
         'service_id',
@@ -43,6 +44,11 @@ class Booking extends Model
     public function barber(): BelongsTo
     {
         return $this->belongsTo(Barber::class);
+    }
+
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class);
     }
 
     public function service(): BelongsTo

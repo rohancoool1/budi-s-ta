@@ -15,6 +15,55 @@ document.addEventListener('DOMContentLoaded', () => {
         mobileMenuButton.querySelector('span').textContent = isOpen ? '≡' : '×';
     });
 
+    const customerEntryModal = document.querySelector('#customer-entry-modal');
+    const customerEntryChoiceKey = 'homcuts-customer-entry-choice';
+    const rememberCustomerEntryChoice = (choice) => {
+        try {
+            localStorage.setItem(customerEntryChoiceKey, choice);
+        } catch (_) {}
+    };
+    const closeCustomerEntryModal = (choice = 'guest') => {
+        if (!customerEntryModal) return;
+        const isOpen = !customerEntryModal.classList.contains('hidden')
+            || document.documentElement.classList.contains('customer-entry-visible');
+        if (!isOpen) return;
+        rememberCustomerEntryChoice(choice);
+        customerEntryModal.classList.add('hidden');
+        customerEntryModal.classList.remove('grid');
+        document.documentElement.classList.remove('customer-entry-visible');
+        document.body.classList.remove('overflow-hidden');
+    };
+    const openCustomerEntryModal = () => {
+        if (!customerEntryModal) return;
+        customerEntryModal.classList.remove('hidden');
+        customerEntryModal.classList.add('grid');
+        document.documentElement.classList.add('customer-entry-visible');
+        document.body.classList.add('overflow-hidden');
+        customerEntryModal.querySelector('input[name="email"]')?.focus({ preventScroll: true });
+    };
+
+    document.querySelectorAll('[data-open-customer-entry]').forEach((button) => {
+        button.addEventListener('click', () => {
+            mobileMenu?.classList.add('hidden');
+            mobileMenuButton?.setAttribute('aria-expanded', 'false');
+            if (mobileMenuButton?.querySelector('span')) mobileMenuButton.querySelector('span').textContent = '≡';
+            openCustomerEntryModal();
+        });
+    });
+    document.querySelectorAll('[data-customer-entry-close]').forEach((button) => {
+        button.addEventListener('click', () => closeCustomerEntryModal());
+    });
+    document.querySelector('[data-customer-entry-guest]')?.addEventListener('click', () => closeCustomerEntryModal('guest'));
+    document.querySelectorAll('[data-customer-entry-choice]').forEach((link) => {
+        link.addEventListener('click', () => rememberCustomerEntryChoice(link.dataset.customerEntryChoice));
+    });
+    document.querySelector('[data-customer-entry-login-form]')?.addEventListener('submit', () => rememberCustomerEntryChoice('login'));
+
+    if (document.documentElement.classList.contains('customer-entry-visible')) {
+        document.body.classList.add('overflow-hidden');
+        customerEntryModal?.querySelector('input[name="email"]')?.focus({ preventScroll: true });
+    }
+
     const bookingType = document.querySelector('#booking-type');
     const artistOptions = document.querySelector('#artist-options');
     const bookingTabs = document.querySelectorAll('[data-booking-mode]');
@@ -301,6 +350,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.addEventListener('keydown', (event) => {
         if (event.key !== 'Escape') return;
+        closeCustomerEntryModal();
         closeCart();
         closeCheckout();
         successModal?.remove();

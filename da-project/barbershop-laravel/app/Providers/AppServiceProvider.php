@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Models\SiteSetting;
 use App\Support\ServiceSchedule;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\View\View as ViewInstance;
@@ -26,6 +27,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         View::composer('*', function (ViewInstance $view) {
+            $view->with('customer', Auth::guard('customer')->user());
+
             $siteSettings = Schema::hasTable('site_settings')
                 ? SiteSetting::pluck('value', 'key')
                 : collect();

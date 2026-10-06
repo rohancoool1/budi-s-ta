@@ -25,9 +25,17 @@
             <div class="mb-5 border border-orange bg-orange/10 p-3 text-xs text-orange">{{ $orderErrors->first() }}</div>
         @endif
         <div class="grid gap-4 sm:grid-cols-2">
-            <div class="sm:col-span-2"><label class="field-label" for="order-name">Nama lengkap</label><input class="form-control mt-2" id="order-name" name="name" value="{{ old('name') }}" required></div>
-            <div><label class="field-label" for="order-phone">WhatsApp</label><input class="form-control mt-2" id="order-phone" name="phone" value="{{ old('phone') }}" required></div>
-            <div><label class="field-label" for="order-email">Email <span class="text-muted">(opsional)</span></label><input class="form-control mt-2" id="order-email" name="email" type="email" value="{{ old('email') }}"></div>
+            @if ($customer)
+                <div class="sm:col-span-2 border border-sage bg-sage/15 p-4 text-xs leading-relaxed">
+                    <p class="field-label">Pesan sebagai {{ $customer->name }}</p>
+                    <p class="mt-2 text-muted">Nama, WhatsApp, dan email dari akun Anda dipakai otomatis. <a class="border-b border-current text-ink" href="{{ route('customer.dashboard') }}">Ubah data akun</a></p>
+                </div>
+            @else
+                <div class="sm:col-span-2"><label class="field-label" for="order-name">Nama lengkap</label><input class="form-control mt-2" id="order-name" name="name" value="{{ old('name') }}" required></div>
+                <div><label class="field-label" for="order-phone">WhatsApp</label><input class="form-control mt-2" id="order-phone" name="phone" value="{{ old('phone') }}" required></div>
+                <div><label class="field-label" for="order-email">Email <span class="text-muted">(opsional)</span></label><input class="form-control mt-2" id="order-email" name="email" type="email" value="{{ old('email') }}"></div>
+                <p class="sm:col-span-2 text-[9px] leading-relaxed text-muted">Sudah punya akun? <a class="border-b border-current text-ink" href="{{ route('customer.login') }}">Masuk agar data terisi otomatis</a>.</p>
+            @endif
             <input type="hidden" name="payment_method" value="cash">
             <div class="sm:col-span-2 border border-ink/15 bg-cream p-4"><p class="field-label">Pembayaran tunai di kasir</p><p class="mt-2 text-[9px] leading-relaxed text-muted">Tunjukkan kode transaksi kepada kasir. Pesanan diproses setelah pembayaran dikonfirmasi.</p></div>
         </div>

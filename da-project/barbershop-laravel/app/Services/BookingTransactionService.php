@@ -31,6 +31,7 @@ class BookingTransactionService
 
             if (! $order) {
                 $order = Order::create([
+                    'customer_id' => $booking->customer_id,
                     'customer_name' => $booking->name,
                     'phone' => $booking->phone,
                     'email' => null,
@@ -52,6 +53,7 @@ class BookingTransactionService
                 ]);
             } else {
                 $orderData = [
+                    'customer_id' => $booking->customer_id,
                     'customer_name' => $booking->name,
                     'phone' => $booking->phone,
                     'channel' => 'booking',

@@ -9,6 +9,8 @@ use App\Http\Controllers\Admin\PosController as AdminPosController;
 use App\Http\Controllers\Admin\ResourceController as AdminResourceController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\CustomerAccountController;
+use App\Http\Controllers\CustomerAuthController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\PaymentController;
@@ -48,6 +50,19 @@ Route::get('/', [PageController::class, 'home'])->name('home');
 Route::get('/booking', [PageController::class, 'booking'])->name('booking');
 Route::get('/shop', [PageController::class, 'shop'])->name('shop');
 Route::get('/gallery', [PageController::class, 'gallery'])->name('gallery');
+
+Route::prefix('pelanggan')->name('customer.')->group(function (): void {
+    Route::get('/', [CustomerAuthController::class, 'access'])->name('access');
+    Route::get('/masuk', [CustomerAuthController::class, 'createLogin'])->middleware('guest:customer')->name('login');
+    Route::post('/masuk', [CustomerAuthController::class, 'storeLogin'])->middleware(['guest:customer', 'throttle:5,1'])->name('login.store');
+    Route::get('/daftar', [CustomerAuthController::class, 'createRegister'])->middleware('guest:customer')->name('register');
+    Route::post('/daftar', [CustomerAuthController::class, 'storeRegister'])->middleware(['guest:customer', 'throttle:5,1'])->name('register.store');
+    Route::middleware('auth:customer')->group(function (): void {
+        Route::get('/akun', [CustomerAccountController::class, 'show'])->name('dashboard');
+        Route::patch('/akun', [CustomerAccountController::class, 'update'])->name('account.update');
+        Route::post('/keluar', [CustomerAuthController::class, 'destroy'])->name('logout');
+    });
+});
 
 Route::view('/about', 'about')->name('about');
 Route::view('/contact', 'contact')->name('contact');

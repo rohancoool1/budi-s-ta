@@ -11,6 +11,7 @@ class Order extends Model
 {
     protected $fillable = [
         'customer_name',
+        'customer_id',
         'phone',
         'email',
         'address',
@@ -41,6 +42,11 @@ class Order extends Model
     public function booking(): BelongsTo
     {
         return $this->belongsTo(Booking::class);
+    }
+
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class);
     }
 
     public function cashier(): BelongsTo

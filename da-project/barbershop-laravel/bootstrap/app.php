@@ -17,7 +17,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => EnsureUserIsAdmin::class,
         ]);
 
-        $middleware->redirectGuestsTo(fn () => route('login'));
+        $middleware->redirectGuestsTo(fn (Request $request) => $request->is('pelanggan/*')
+            ? route('customer.access')
+            : route('login'));
+        $middleware->redirectUsersTo(fn (Request $request) => $request->is('pelanggan*')
+            ? route('customer.dashboard')
+            : route('admin.dashboard'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
