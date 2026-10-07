@@ -14,8 +14,8 @@ services:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 --protocol=TCP -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
       interval: 10s
       timeout: 5s
-      retries: 10
-      start_period: 30s
+      retries: 20
+      start_period: 5m
     restart: unless-stopped
 
   web:
