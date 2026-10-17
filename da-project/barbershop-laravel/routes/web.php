@@ -11,6 +11,7 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\CustomerAccountController;
 use App\Http\Controllers\CustomerAuthController;
+use App\Http\Controllers\CustomerVerificationController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\PaymentController;
@@ -58,8 +59,15 @@ Route::prefix('pelanggan')->name('customer.')->group(function (): void {
     Route::get('/daftar', [CustomerAuthController::class, 'createRegister'])->middleware('guest:customer')->name('register');
     Route::post('/daftar', [CustomerAuthController::class, 'storeRegister'])->middleware(['guest:customer', 'throttle:5,1'])->name('register.store');
     Route::middleware('auth:customer')->group(function (): void {
-        Route::get('/akun', [CustomerAccountController::class, 'show'])->name('dashboard');
-        Route::patch('/akun', [CustomerAccountController::class, 'update'])->name('account.update');
+        Route::get('/verifikasi', [CustomerVerificationController::class, 'show'])->name('verification.notice');
+        Route::post('/verifikasi/{channel}/kirim', [CustomerVerificationController::class, 'send'])
+            ->whereIn('channel', ['email', 'phone'])->middleware('throttle:6,1')->name('verification.send');
+        Route::post('/verifikasi/{channel}', [CustomerVerificationController::class, 'verify'])
+            ->whereIn('channel', ['email', 'phone'])->middleware('throttle:10,1')->name('verification.verify');
+        Route::patch('/verifikasi/kontak', [CustomerVerificationController::class, 'updateContacts'])
+            ->middleware('throttle:5,1')->name('verification.contacts');
+        Route::get('/akun', [CustomerAccountController::class, 'show'])->middleware('customer.contacts.verified')->name('dashboard');
+        Route::patch('/akun', [CustomerAccountController::class, 'update'])->middleware(['customer.contacts.verified', 'throttle:5,1'])->name('account.update');
         Route::post('/keluar', [CustomerAuthController::class, 'destroy'])->name('logout');
     });
 });
@@ -67,9 +75,9 @@ Route::prefix('pelanggan')->name('customer.')->group(function (): void {
 Route::view('/about', 'about')->name('about');
 Route::view('/contact', 'contact')->name('contact');
 
-Route::post('/bookings', [BookingController::class, 'store'])->middleware('throttle:10,1')->name('bookings.store');
+Route::post('/bookings', [BookingController::class, 'store'])->middleware(['throttle:10,1', 'customer.contacts.verified'])->name('bookings.store');
 Route::get('/bookings/availability', [BookingController::class, 'availability'])->middleware('throttle:120,1')->name('bookings.availability');
-Route::post('/orders', [OrderController::class, 'store'])->middleware('throttle:10,1')->name('orders.store');
+Route::post('/orders', [OrderController::class, 'store'])->middleware(['throttle:10,1', 'customer.contacts.verified'])->name('orders.store');
 Route::post('/contact', [ContactController::class, 'store'])->name('contact.store');
 Route::get('/payments/{payment}', [PaymentController::class, 'show'])->name('payments.show');
 Route::get('/payments/{payment}/invoice.pdf', [PaymentController::class, 'invoice'])->name('payments.invoice');

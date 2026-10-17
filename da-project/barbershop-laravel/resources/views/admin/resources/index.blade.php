@@ -16,6 +16,29 @@
         @endif
     </div>
 
+    @if (in_array($resource, ['barbers', 'capsters'], true))
+        <form class="mb-6 flex flex-wrap items-end gap-4 border border-ink/15 bg-paper p-5" method="GET" action="{{ route('admin.resources.index', ['resource' => $resource]) }}" aria-label="Filter capster">
+            @foreach ($resourceFilters as $filter)
+                <div class="min-w-48 flex-1">
+                    <label class="field-label mb-2" for="filter-{{ $filter['name'] }}">{{ $filter['label'] }}</label>
+                    <select class="form-control w-full" id="filter-{{ $filter['name'] }}" name="{{ $filter['name'] }}">
+                        <option value="">{{ $filter['name'] === 'capster' ? 'Semua capster' : 'Semua status' }}</option>
+                        @foreach ($filter['options'] as $value => $label)
+                            <option value="{{ $value }}" @selected((string) request($filter['name']) === (string) $value)>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            @endforeach
+            @foreach (['sort', 'direction', 'q'] as $parameter)
+                @if (request()->filled($parameter))
+                    <input type="hidden" name="{{ $parameter }}" value="{{ request($parameter) }}">
+                @endif
+            @endforeach
+            <button class="btn-primary" type="submit">Terapkan filter <span>→</span></button>
+            <a class="link-button mb-3" href="{{ route('admin.resources.index', ['resource' => $resource]) }}">Reset filter</a>
+        </form>
+    @endif
+
     <div class="overflow-hidden border border-ink/15 bg-paper" data-live-region="resource-table">
         <div class="admin-table-wrap">
             <table class="admin-data-table w-full border-collapse text-left">

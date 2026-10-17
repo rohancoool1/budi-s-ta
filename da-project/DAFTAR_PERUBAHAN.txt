@@ -1,0 +1,48 @@
+REVISI HOMCUTS - 17 OKTOBER 2026
+
+BERKAS DIUBAH
+barbershop-laravel/.env.example
+barbershop-laravel/app/Http/Controllers/Admin/ResourceController.php
+barbershop-laravel/app/Http/Controllers/CustomerAccountController.php
+barbershop-laravel/app/Http/Controllers/CustomerAuthController.php
+barbershop-laravel/app/Models/Customer.php
+barbershop-laravel/bootstrap/app.php
+barbershop-laravel/config/mail.php
+barbershop-laravel/phpunit.xml
+barbershop-laravel/README.md
+barbershop-laravel/resources/js/app.js
+barbershop-laravel/resources/views/admin/resources/index.blade.php
+barbershop-laravel/resources/views/customer/dashboard.blade.php
+barbershop-laravel/resources/views/customer/register.blade.php
+barbershop-laravel/routes/web.php
+barbershop-laravel/tests/Feature/ExampleTest.php
+compose.yaml
+Dockerfile
+
+BERKAS DITAMBAHKAN
+barbershop-laravel/app/Http/Controllers/CustomerVerificationController.php
+barbershop-laravel/app/Http/Middleware/EnsureCustomerContactsVerified.php
+barbershop-laravel/app/Mail/CustomerVerificationMail.php
+barbershop-laravel/app/Models/CustomerVerificationCode.php
+barbershop-laravel/app/Services/CustomerOtpSender.php
+barbershop-laravel/app/Services/CustomerVerificationService.php
+barbershop-laravel/app/Support/CustomerContact.php
+barbershop-laravel/config/customer_verification.php
+barbershop-laravel/database/migrations/2026_10_17_000000_add_customer_contact_verification.php
+barbershop-laravel/public/build/assets/admin-image-editor-DvswCPaF.js
+barbershop-laravel/public/build/assets/app-CSaOkzu9.js
+barbershop-laravel/public/build/assets/app-DnqXrpP0.css
+barbershop-laravel/public/build/manifest.json
+barbershop-laravel/resources/views/customer/verify.blade.php
+barbershop-laravel/resources/views/emails/customer-verification.blade.php
+barbershop-laravel/tests/Feature/CapsterFilterTest.php
+barbershop-laravel/tests/Feature/CustomerVerificationTest.php
+PANDUAN_UPDATE_OTP_DAN_FILTER.md
+
+HASIL UJI
+104 tests, 1128 assertions: PASS (PHP 8.4, SQLite in-memory).
+21 tests pelanggan/OTP + 3 tests filter capster termasuk dalam total.
+Baseline versi awal: 2 tests, 13 assertions: PASS.
+Vite production build dan sintaks JavaScript: PASS.
+Email/SMS menggunakan fake; pengiriman nyata belum diuji.
+Docker/MySQL belum dijalankan; konfigurasi Compose diperiksa secara statis.

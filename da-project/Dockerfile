@@ -14,6 +14,12 @@ RUN composer install \
     --optimize-autoloader
 
 
+# Test dependencies are isolated from the production image.
+FROM vendor AS vendor-test
+
+RUN composer install --no-interaction --no-progress --no-scripts --prefer-dist --optimize-autoloader
+
+
 # Compile Tailwind CSS and the small plain JavaScript file.
 FROM node:22-alpine AS assets
 
@@ -30,7 +36,7 @@ RUN npm run build
 
 
 # Run the Laravel application.
-FROM php:8.4-cli-bookworm AS app
+FROM php:8.4-cli-bookworm AS runtime
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -74,3 +80,18 @@ HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=3 \
     CMD curl --fail --silent http://127.0.0.1:8000/ > /dev/null || exit 1
 
 CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+
+
+# Run PHPUnit without depending on a host-installed vendor directory.
+FROM runtime AS testing
+
+USER root
+COPY --from=vendor-test --chown=www-data:www-data /app/vendor ./vendor
+RUN php artisan package:discover --ansi \
+    && chown -R www-data:www-data bootstrap/cache
+USER www-data
+CMD ["php", "vendor/bin/phpunit", "--do-not-cache-result"]
+
+
+# Keep the default image free of development dependencies.
+FROM runtime AS app

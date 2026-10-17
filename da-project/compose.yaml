@@ -22,6 +22,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: app
     container_name: homcuts-web
     env_file:
       - ./barbershop-laravel/.env
@@ -49,6 +50,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: app
     container_name: homcuts-scheduler
     env_file:
       - ./barbershop-laravel/.env
@@ -77,16 +79,20 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: app
+      target: testing
     profiles: ["test"]
     env_file:
       - ./barbershop-laravel/.env
     environment:
       APP_ENV: testing
+      APP_KEY: base64:dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHQ=
       LOG_CHANNEL: stderr
       CACHE_STORE: array
       SESSION_DRIVER: array
+      MAIL_MAILER: array
+      QUEUE_CONNECTION: sync
       DB_CONNECTION: mysql
+      DB_URL: ""
       DB_HOST: db
       DB_PORT: 3306
       DB_DATABASE: barbershop_testing
@@ -95,15 +101,11 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    command: ["./vendor/bin/phpunit", "tests/Feature/BlackBoxTest.php", "--testdox", "--colors=always", "--do-not-cache-result"]
-    volumes:
-      - ./barbershop-laravel:/var/www/html:ro
-      - test_storage:/var/www/html/storage
-      - test_bootstrap_cache:/var/www/html/bootstrap/cache
+    command: ["php", "vendor/bin/phpunit", "--testdox", "--colors=always", "--do-not-cache-result"]
+    healthcheck:
+      disable: true
     init: true
 
 volumes:
   laravel_storage:
   mysql_data:
-  test_storage:
-  test_bootstrap_cache:

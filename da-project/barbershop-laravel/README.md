@@ -1,5 +1,7 @@
 # HOMCUTS — Laravel
 
+Revisi login pelanggan, OTP email/SMS, dan filter capster: lihat [panduan update](../PANDUAN_UPDATE_OTP_DAN_FILTER.md). Panduan tersebut menjelaskan aktivasi akun lama, konfigurasi pengirim, dan hasil pengujian.
+
 Proyek ini menggunakan Laravel Blade, Tailwind CSS, Vite, dan JavaScript biasa. Tidak menggunakan React, TypeScript, Vinext, Inertia, Alpine, atau Livewire.
 
 ## Menjalankan dengan Docker
@@ -59,7 +61,7 @@ Panel admin mempunyai notifikasi database untuk booking baru, pesanan baru, dan 
 
 Semua booking, pesanan produk, dan transaksi walk-in memakai pembayaran tunai. Pelanggan menerima kode transaksi, kemudian kasir membuka transaksi tersebut dan memilih **Konfirmasi uang diterima** dari menu Booking atau Kasir POS. Halaman pelanggan, status admin, dan notifikasi admin memperbarui data otomatis tanpa refresh manual. Tidak ada QRIS atau koneksi payment gateway yang aktif.
 
-Booking dan pesanan online memiliki batas waktu agar slot capster atau stok produk tidak tertahan selamanya. Batas ini dapat diatur melalui `BOOKING_CASH_EXPIRY_MINUTES` dan `PRODUCT_CASH_EXPIRY_MINUTES`.
+Booking dan pesanan online memiliki batas waktu agar slot capster atau stok produk tidak tertahan selamanya. Batas ini dapat diatur melalui **Admin → Pengaturan** (`payment_expiry_minutes`).
 
 Foto produk, capster, dan galeri diunggah langsung melalui formulir admin. Format yang diterima adalah JPG, PNG, dan WebP hingga 5 MB.
 
@@ -69,29 +71,13 @@ Login admin memakai autentikasi sesi Laravel, kata sandi hash, perlindungan CSRF
 
 ## Menjalankan pengujian
 
-Cara yang paling konsisten adalah menjalankan pengujian di container terhadap database MySQL khusus pengujian. Jangan menjalankan pengujian dengan `DB_DATABASE=barbershop` karena `RefreshDatabase` dapat mengosongkan database tersebut.
+Lihat [panduan update](../PANDUAN_UPDATE_OTP_DAN_FILTER.md#mengulang-pengujian) untuk persiapan database pengujian dan perintah lengkap.
 
-Buat database test satu kali:
-
-```bash
-docker compose exec db mysql -uroot -proot_secret -e "CREATE DATABASE IF NOT EXISTS barbershop_testing; GRANT ALL PRIVILEGES ON barbershop_testing.* TO 'barbershop'@'%';"
-```
-
-Lalu jalankan seluruh test tanpa memakai cache file aplikasi:
+Service Docker `test` memakai image khusus dengan dependency development. Setelah database `barbershop_testing` tersedia, dari folder `da-project` jalankan:
 
 ```bash
-docker compose run --rm --no-deps \
-  --volume ./barbershop-laravel:/var/www/html \
-  --volume /var/www/html/storage \
-  --env APP_ENV=testing \
-  --env CACHE_STORE=array \
-  --env SESSION_DRIVER=array \
-  --env DB_CONNECTION=mysql \
-  --env DB_HOST=db \
-  --env DB_DATABASE=barbershop_testing \
-  --env DB_USERNAME=barbershop \
-  --env DB_PASSWORD=barbershop_secret \
-  web php vendor/bin/phpunit --do-not-cache-result
+docker compose --profile test build test
+docker compose --profile test run --rm test
 ```
 
-Volume anonim pada `/var/www/html/storage` sengaja digunakan agar cache pengujian tidak tercampur dengan cache situs Docker yang sedang aktif.
+Jangan menjalankan `RefreshDatabase` terhadap database operasional. Service `test` memakai database `barbershop_testing` dan tidak memasang storage operasional.

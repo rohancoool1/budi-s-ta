@@ -1,4 +1,40 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const registrationForm = document.querySelector('[data-customer-register]');
+    if (registrationForm) {
+        const password = registrationForm.querySelector('[name="password"]');
+        const confirmation = registrationForm.querySelector('[name="password_confirmation"]');
+        const error = registrationForm.querySelector('#password-confirmation-error');
+        const validateConfirmation = () => {
+            const mismatch = confirmation.value !== '' && password.value !== confirmation.value;
+            const message = mismatch ? 'Ulangi kata sandi harus sama persis dengan kata sandi.' : '';
+            confirmation.setCustomValidity(message);
+            confirmation.setAttribute('aria-invalid', String(mismatch));
+            error.textContent = message;
+            return !mismatch;
+        };
+        password.addEventListener('input', validateConfirmation);
+        confirmation.addEventListener('input', validateConfirmation);
+        registrationForm.addEventListener('submit', (event) => {
+            if (!validateConfirmation()) {
+                event.preventDefault();
+                confirmation.reportValidity();
+            }
+        });
+    }
+
+    document.querySelectorAll('[data-otp-resend-at]').forEach((button) => {
+        const retryAt = Date.parse(button.dataset.otpResendAt || '');
+        let timer;
+        const update = () => {
+            const seconds = Number.isFinite(retryAt) ? Math.max(0, Math.ceil((retryAt - Date.now()) / 1000)) : 0;
+            button.disabled = seconds > 0;
+            button.textContent = seconds > 0 ? `Kirim ulang dalam ${seconds} detik` : 'Kirim kode / kirim ulang';
+            if (seconds === 0 && timer) clearInterval(timer);
+        };
+        update();
+        if (button.disabled) timer = setInterval(update, 1000);
+    });
+
     const money = new Intl.NumberFormat('id-ID', {
         style: 'currency',
         currency: 'IDR',
