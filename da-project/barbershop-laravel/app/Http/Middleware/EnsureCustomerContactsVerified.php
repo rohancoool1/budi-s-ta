@@ -14,13 +14,13 @@ class EnsureCustomerContactsVerified
         if ($customer && ! $customer->hasVerifiedContacts()) {
             if ($request->expectsJson()) {
                 return response()->json([
-                    'message' => 'Verifikasi email dan nomor HP terlebih dahulu.',
+                    'message' => 'Verifikasi email terlebih dahulu.',
                     'verification_url' => route('customer.verification.notice'),
                 ], 403);
             }
 
             return to_route('customer.verification.notice')
-                ->with('status', 'Verifikasi email dan nomor HP sebelum menggunakan akun pelanggan.');
+                ->with('status', 'Verifikasi email sebelum menggunakan akun pelanggan.');
         }
 
         return $next($request);

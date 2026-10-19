@@ -49,7 +49,7 @@ class CustomerAccountController extends Controller
 
         if (! $customer->refresh()->hasVerifiedContacts()) {
             return to_route('customer.verification.notice')
-                ->with('status', 'Kontak diperbarui. Kirim dan verifikasi kode untuk kontak baru Anda.');
+                ->with('status', 'Email diperbarui. Kirim dan verifikasi kode untuk email baru Anda.');
         }
 
         return to_route('customer.dashboard')->with('success', 'Data akun pelanggan diperbarui.');

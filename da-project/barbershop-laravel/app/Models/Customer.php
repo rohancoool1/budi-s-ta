@@ -34,7 +34,7 @@ class Customer extends Authenticatable
 
     public function hasVerifiedContacts(): bool
     {
-        return $this->email_verified_at !== null && $this->phone_verified_at !== null;
+        return $this->email_verified_at !== null;
     }
 
     protected static function booted(): void

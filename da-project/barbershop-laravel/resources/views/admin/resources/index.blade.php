@@ -16,29 +16,6 @@
         @endif
     </div>
 
-    @if (in_array($resource, ['barbers', 'capsters'], true))
-        <form class="mb-6 flex flex-wrap items-end gap-4 border border-ink/15 bg-paper p-5" method="GET" action="{{ route('admin.resources.index', ['resource' => $resource]) }}" aria-label="Filter capster">
-            @foreach ($resourceFilters as $filter)
-                <div class="min-w-48 flex-1">
-                    <label class="field-label mb-2" for="filter-{{ $filter['name'] }}">{{ $filter['label'] }}</label>
-                    <select class="form-control w-full" id="filter-{{ $filter['name'] }}" name="{{ $filter['name'] }}">
-                        <option value="">{{ $filter['name'] === 'capster' ? 'Semua capster' : 'Semua status' }}</option>
-                        @foreach ($filter['options'] as $value => $label)
-                            <option value="{{ $value }}" @selected((string) request($filter['name']) === (string) $value)>{{ $label }}</option>
-                        @endforeach
-                    </select>
-                </div>
-            @endforeach
-            @foreach (['sort', 'direction', 'q'] as $parameter)
-                @if (request()->filled($parameter))
-                    <input type="hidden" name="{{ $parameter }}" value="{{ request($parameter) }}">
-                @endif
-            @endforeach
-            <button class="btn-primary" type="submit">Terapkan filter <span>→</span></button>
-            <a class="link-button mb-3" href="{{ route('admin.resources.index', ['resource' => $resource]) }}">Reset filter</a>
-        </form>
-    @endif
-
     <div class="overflow-hidden border border-ink/15 bg-paper" data-live-region="resource-table">
         <div class="admin-table-wrap">
             <table class="admin-data-table w-full border-collapse text-left">
@@ -60,6 +37,9 @@
                                 </a>
                             </th>
                         @endforeach
+                        @if (in_array($resource, ['barbers', 'capsters'], true))
+                            <th class="px-3 py-4 text-[8px] font-black uppercase tracking-[.1em] 2xl:px-4">Detail</th>
+                        @endif
                         <th class="px-3 py-4 text-right text-[8px] font-black uppercase tracking-[.1em] 2xl:px-4">Tindakan</th>
                     </tr>
                 </thead>
@@ -109,6 +89,11 @@
                                     @endif
                                 </td>
                             @endforeach
+                            @if (in_array($resource, ['barbers', 'capsters'], true))
+                                <td class="px-3 py-4 text-xs 2xl:px-4" data-label="Detail">
+                                    <a class="font-bold text-orange underline underline-offset-4" href="{{ route('admin.capsters.show', $record) }}" aria-label="Lihat detail {{ $record->name }}">Details</a>
+                                </td>
+                            @endif
                             <td class="admin-table-actions px-3 py-4 2xl:px-4" data-label="Tindakan">
                                 <div class="flex flex-wrap justify-end gap-2">
                                     @php
@@ -137,7 +122,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td class="admin-table-empty px-5 py-16 text-center text-sm text-muted" colspan="{{ count($definition['columns']) + 1 }}">Data tidak ditemukan.</td></tr>
+                        <tr><td class="admin-table-empty px-5 py-16 text-center text-sm text-muted" colspan="{{ count($definition['columns']) + 1 + (in_array($resource, ['barbers', 'capsters'], true) ? 1 : 0) }}">Data tidak ditemukan.</td></tr>
                     @endforelse
                 </tbody>
             </table>

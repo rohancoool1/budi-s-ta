@@ -38,6 +38,9 @@ Route::prefix('admin')->group(function (): void {
         Route::post('/orders/{order}/complete', [AdminPaymentController::class, 'complete'])->name('orders.complete');
         Route::get('/bookings/check-availability', [AdminResourceController::class, 'bookingAvailability'])->name('bookings.availability');
 
+        Route::get('/capsters/{barber}/detail', \App\Http\Controllers\Admin\CapsterDetailController::class)
+            ->whereNumber('barber')->name('capsters.show');
+
         Route::get('/{resource}', [AdminResourceController::class, 'index'])->whereIn('resource', AdminResources::keys())->name('resources.index');
         Route::get('/{resource}/create', [AdminResourceController::class, 'create'])->whereIn('resource', AdminResources::keys())->name('resources.create');
         Route::post('/{resource}', [AdminResourceController::class, 'store'])->whereIn('resource', AdminResources::keys())->name('resources.store');
@@ -61,9 +64,9 @@ Route::prefix('pelanggan')->name('customer.')->group(function (): void {
     Route::middleware('auth:customer')->group(function (): void {
         Route::get('/verifikasi', [CustomerVerificationController::class, 'show'])->name('verification.notice');
         Route::post('/verifikasi/{channel}/kirim', [CustomerVerificationController::class, 'send'])
-            ->whereIn('channel', ['email', 'phone'])->middleware('throttle:6,1')->name('verification.send');
+            ->whereIn('channel', ['email'])->middleware('throttle:6,1')->name('verification.send');
         Route::post('/verifikasi/{channel}', [CustomerVerificationController::class, 'verify'])
-            ->whereIn('channel', ['email', 'phone'])->middleware('throttle:10,1')->name('verification.verify');
+            ->whereIn('channel', ['email'])->middleware('throttle:10,1')->name('verification.verify');
         Route::patch('/verifikasi/kontak', [CustomerVerificationController::class, 'updateContacts'])
             ->middleware('throttle:5,1')->name('verification.contacts');
         Route::get('/akun', [CustomerAccountController::class, 'show'])->middleware('customer.contacts.verified')->name('dashboard');

@@ -9,7 +9,6 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Services\CustomerVerificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\Client\Request as ClientRequest;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -19,9 +18,6 @@ class CustomerVerificationTest extends TestCase
 {
     use RefreshDatabase;
 
-    private array $smsCodes = [];
-    private bool $rejectSms = false;
-
     protected function setUp(): void
     {
         parent::setUp();
@@ -29,25 +25,12 @@ class CustomerVerificationTest extends TestCase
         config([
             'app.key' => 'base64:'.base64_encode(str_repeat('t', 32)),
             'customer_verification.email_mailer' => 'smtp',
-            'customer_verification.sms_driver' => 'twilio',
-            'customer_verification.twilio.account_sid' => 'AC'.str_repeat('1', 32),
-            'customer_verification.twilio.auth_token' => 'test-token',
-            'customer_verification.twilio.from' => '+15555550100',
-            'customer_verification.twilio.messaging_service_sid' => null,
             'mail.mailers.smtp.host' => 'smtp.example.test',
             'mail.from.address' => 'homcuts@example.test',
         ]);
         Mail::fake();
         Http::preventStrayRequests();
-        Http::fake(['api.twilio.com/*' => function (ClientRequest $request) {
-            if ($this->rejectSms) {
-                return Http::response(['message' => 'Rejected'], 400);
-            }
-            preg_match('/HOMCUTS: ([0-9]{6})/', $request['Body'], $matches);
-            $this->smsCodes[] = $matches[1];
 
-            return Http::response(['sid' => 'SM-test', 'status' => 'queued'], 201);
-        }]);
     }
 
     public function test_mismatched_password_confirmation_never_creates_an_account_or_sends_otp(): void
@@ -70,7 +53,7 @@ class CustomerVerificationTest extends TestCase
         $this->assertDatabaseCount('customers', 0);
     }
 
-    public function test_registration_sends_two_distinct_channel_challenges_and_keeps_account_unverified(): void
+    public function test_registration_sends_only_email_and_keeps_account_unverified(): void
     {
         $customer = $this->registerCustomer();
         $this->assertAuthenticatedAs($customer, 'customer');
@@ -78,34 +61,47 @@ class CustomerVerificationTest extends TestCase
         $this->assertTrue(Hash::check('ValidPass123', $customer->password));
         $this->assertFalse($customer->hasVerifiedContacts());
         Mail::assertSent(CustomerVerificationMail::class, fn ($mail) => $mail->hasTo($customer->email));
-        Http::assertSent(fn (ClientRequest $request) => $request['To'] === $customer->phone
-            && $request['From'] === '+15555550100' && str_contains($request['Body'], $this->smsCodes[0]));
-        $this->assertDatabaseCount('customer_verification_codes', 2);
+        Http::assertNothingSent();
+        $this->assertDatabaseCount('customer_verification_codes', 1);
+        $this->assertDatabaseMissing('customer_verification_codes', ['channel' => 'phone']);
         $record = CustomerVerificationCode::where('channel', 'email')->firstOrFail();
         $this->assertNotSame($this->emailCode(), $record->code_hash);
         $this->assertTrue(Hash::check($this->emailCode(), $record->code_hash));
-        $this->get(route('customer.verification.notice'))->assertOk()->assertSee('Verifikasi kontak Anda.');
+        $this->get(route('customer.verification.notice'))->assertOk()->assertSee('Verifikasi email Anda.')->assertDontSee('phone_code')->assertDontSee('SMS');
         $this->get(route('customer.dashboard'))->assertRedirect(route('customer.verification.notice'));
     }
 
-    public function test_email_alone_is_insufficient_and_both_codes_activate_the_account(): void
+    public function test_email_alone_activates_account_without_phone_verification(): void
     {
         $customer = $this->registerCustomer();
-        $this->verifyCode('email', $this->emailCode())->assertRedirect(route('customer.verification.notice'));
+        $this->verifyCode('email', $this->emailCode())->assertRedirect(route('customer.dashboard'));
         $this->assertNotNull($customer->fresh()->email_verified_at);
         $this->assertNull($customer->fresh()->phone_verified_at);
-        $this->get(route('customer.dashboard'))->assertRedirect(route('customer.verification.notice'));
-        $this->verifyCode('phone', $this->smsCodes[0])->assertRedirect(route('customer.dashboard'));
         $this->assertTrue($customer->fresh()->hasVerifiedContacts());
         $this->get(route('customer.dashboard'))->assertOk();
     }
 
-    public function test_phone_can_be_verified_before_email(): void
+    public function test_phone_otp_endpoints_are_disabled(): void
     {
-        $customer = $this->registerCustomer();
-        $this->verifyCode('phone', $this->smsCodes[0])->assertRedirect(route('customer.verification.notice'));
-        $this->assertFalse($customer->fresh()->hasVerifiedContacts());
-        $this->verifyCode('email', $this->emailCode())->assertRedirect(route('customer.dashboard'));
+        $this->registerCustomer();
+        $this->verifyCode('phone', '123456')->assertNotFound();
+        $this->post(route('customer.verification.send', ['channel' => 'phone']))->assertNotFound();
+        Http::assertNothingSent();
+    }
+
+    public function test_phone_change_does_not_revoke_email_verification(): void
+    {
+        $customer = $this->verifiedCustomer();
+        $verifiedAt = $customer->email_verified_at->toDateTimeString();
+        $this->actingAs($customer, 'customer')->patch(route('customer.account.update'), [
+            'name' => $customer->name, 'email' => $customer->email,
+            'phone' => '081299999999', 'current_password' => 'ValidPass123',
+        ])->assertRedirect(route('customer.dashboard'))->assertSessionHasNoErrors();
+        $this->assertSame('+6281299999999', $customer->fresh()->phone);
+        $this->assertSame($verifiedAt, $customer->fresh()->email_verified_at->toDateTimeString());
+        $this->get(route('customer.dashboard'))->assertOk();
+        Mail::assertNothingSent();
+        Http::assertNothingSent();
     }
 
     public function test_five_wrong_attempts_lock_the_challenge_even_for_the_correct_code(): void
@@ -127,9 +123,14 @@ class CustomerVerificationTest extends TestCase
         $verifiedAt = $customer->fresh()->email_verified_at->toDateTimeString();
         $this->verifyCode('email', $this->emailCode())->assertSessionHasErrors('email_code');
         $this->assertSame($verifiedAt, $customer->fresh()->email_verified_at->toDateTimeString());
+    }
+
+    public function test_expired_email_code_cannot_activate_account(): void
+    {
+        $customer = $this->registerCustomer();
         $this->travel(11)->minutes();
-        $this->verifyCode('phone', $this->smsCodes[0])->assertSessionHasErrors('phone_code');
-        $this->assertNull($customer->fresh()->phone_verified_at);
+        $this->verifyCode('email', $this->emailCode())->assertSessionHasErrors('email_code');
+        $this->assertNull($customer->fresh()->email_verified_at);
     }
 
     public function test_resend_enforces_cooldown_and_invalidates_previous_code(): void
@@ -216,7 +217,7 @@ class CustomerVerificationTest extends TestCase
         $this->patch(route('customer.account.update'), [...$payload, 'current_password' => 'ValidPass123'])
             ->assertRedirect(route('customer.verification.notice'));
         $this->assertNull($customer->fresh()->email_verified_at);
-        $this->assertNotNull($customer->fresh()->phone_verified_at);
+        $this->assertNull($customer->fresh()->phone_verified_at);
         $this->get(route('customer.dashboard'))->assertRedirect(route('customer.verification.notice'));
     }
 
@@ -235,24 +236,17 @@ class CustomerVerificationTest extends TestCase
 
     public function test_delivery_failure_is_visible_and_does_not_activate_or_delete_account(): void
     {
-        $this->rejectSms = true;
+        Mail::shouldReceive('mailer')->once()->with('smtp')->andReturnSelf();
+        Mail::shouldReceive('to')->once()->andReturnSelf();
+        Mail::shouldReceive('send')->once()->andThrow(new \RuntimeException('Delivery failed'));
         $this->post(route('customer.register.store'), $this->registration())
-            ->assertRedirect(route('customer.verification.notice'))->assertSessionHasErrors('phone_code');
+            ->assertRedirect(route('customer.verification.notice'))->assertSessionHasErrors('email_code');
         $customer = Customer::firstOrFail();
         $this->assertFalse($customer->hasVerifiedContacts());
-        $record = CustomerVerificationCode::where('channel', 'phone')->firstOrFail();
+        $record = CustomerVerificationCode::where('channel', 'email')->firstOrFail();
         $this->assertNull($record->sent_at);
         $this->assertSame('', $record->code_hash);
-        Mail::assertSentCount(1);
-    }
-
-    public function test_missing_provider_configuration_never_claims_sms_was_sent(): void
-    {
-        config(['customer_verification.sms_driver' => 'disabled']);
-        $this->post(route('customer.register.store'), $this->registration())
-            ->assertSessionHasErrors('phone_code');
         Http::assertNothingSent();
-        $this->assertDatabaseMissing('customer_verification_codes', ['channel' => 'phone']);
     }
 
     public function test_log_mailer_cannot_pretend_to_deliver_a_verification_email(): void
@@ -266,7 +260,7 @@ class CustomerVerificationTest extends TestCase
     public function test_guest_cannot_send_or_verify_codes_and_unknown_channel_is_rejected(): void
     {
         $this->post(route('customer.verification.send', ['channel' => 'email']))->assertRedirect(route('customer.login'));
-        $this->verifyCode('phone', '123456')->assertRedirect(route('customer.login'));
+        $this->verifyCode('email', '123456')->assertRedirect(route('customer.login'));
         $this->actingAs($this->customer(), 'customer')->post('/pelanggan/verifikasi/other/kirim')->assertNotFound();
         Http::assertNothingSent();
     }
@@ -319,7 +313,7 @@ class CustomerVerificationTest extends TestCase
     private function verifiedCustomer(): Customer
     {
         $customer = $this->customer();
-        $customer->forceFill(['email_verified_at' => now(), 'phone_verified_at' => now()])->save();
+        $customer->forceFill(['email_verified_at' => now()])->save();
 
         return $customer;
     }

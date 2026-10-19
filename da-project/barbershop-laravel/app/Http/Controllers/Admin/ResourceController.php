@@ -726,10 +726,6 @@ class ResourceController extends Controller
                 ['name' => 'category', 'column' => 'category', 'label' => 'Kategori', 'options' => $definition['model']::query()->whereNotNull('category')->distinct()->orderBy('category')->pluck('category', 'category')->all()],
                 ['name' => 'active', 'column' => 'is_active', 'label' => 'Tampilan', 'options' => $booleanOptions],
             ],
-            'barbers', 'capsters' => [
-                ['name' => 'capster', 'column' => 'id', 'label' => 'Capster', 'options' => Barber::query()->orderBy('name')->pluck('name', 'id')->all()],
-                ['name' => 'active', 'column' => 'is_active', 'label' => 'Ketersediaan', 'options' => $booleanOptions],
-            ],
             'services' => [
                 ['name' => 'active', 'column' => 'is_active', 'label' => 'Ketersediaan', 'options' => $booleanOptions],
             ],

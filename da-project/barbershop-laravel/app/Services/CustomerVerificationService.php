@@ -16,11 +16,11 @@ class CustomerVerificationService
 {
     public function __construct(private readonly CustomerOtpSender $sender) {}
 
-    /** Send each unverified channel independently, retaining useful errors. */
+    /** Send the email challenge, retaining delivery errors. */
     public function sendMissing(Customer $customer): array
     {
         $errors = [];
-        foreach (['email', 'phone'] as $channel) {
+        foreach (['email'] as $channel) {
             if ($customer->fresh()->{$channel.'_verified_at'}) {
                 continue;
             }
@@ -36,7 +36,7 @@ class CustomerVerificationService
 
     public function send(Customer $customer, string $channel): bool
     {
-        abort_unless(in_array($channel, ['email', 'phone'], true), 404);
+        abort_unless(in_array($channel, ['email'], true), 404);
         if ($customer->fresh()->{$channel.'_verified_at'}) {
             return false;
         }
@@ -121,7 +121,7 @@ class CustomerVerificationService
 
     public function verify(Customer $customer, string $channel, string $code): void
     {
-        abort_unless(in_array($channel, ['email', 'phone'], true), 404);
+        abort_unless(in_array($channel, ['email'], true), 404);
         $error = DB::transaction(function () use ($customer, $channel, $code): ?string {
             $customer = Customer::query()->lockForUpdate()->findOrFail($customer->id);
             $record = CustomerVerificationCode::query()
@@ -172,7 +172,7 @@ class CustomerVerificationService
         Log::warning('Customer OTP delivery failed.', [
             'customer_id' => $customer->id, 'channel' => $channel, 'exception_type' => $exception::class,
         ]);
-        $label = $channel === 'email' ? 'email' : 'SMS';
+        $label = 'email';
         throw ValidationException::withMessages([
             $channel.'_code' => "Kode {$label} belum dapat dikirim. Akun tetap tersimpan. Coba kirim ulang atau hubungi admin.",
         ]);

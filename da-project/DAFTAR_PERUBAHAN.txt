@@ -1,3 +1,30 @@
+KOREKSI TERBARU: Filter per kolom diganti SORT BY melalui klik judul kolom.
+Klik ulang untuk naik/turun. Filter periode hari ini/tanggal/bulan/tahun tetap ada.
+
+UPDATE: Filter kolom riwayat pada Detail Capster dan periode hari ini/tanggal/bulan/tahun.
+Ringkasan dan rekap mengikuti semua filter, termasuk saat pindah halaman.
+Tidak ada migration tambahan.
+
+UPDATE: Kolom Detail sebelum Tindakan di tabel Capster.
+Tautan Details membuka profil, jumlah layanan selesai/belum selesai/dibatalkan,
+rekap jenis layanan selesai, riwayat jadwal, pelanggan, pembayaran, dan transaksi.
+Riwayat hanya untuk admin, 15 item per halaman; ringkasan mencakup semua halaman.
+Tidak membutuhkan migration baru.
+Tes CapsterDetailTest ditambahkan, belum dijalankan (PHP/Composer/Docker tidak tersedia).
+
+UPDATE: Panel filter nama capster dan ketersediaan di Admin Capster dihapus.
+Parameter capster/active pada halaman tersebut tidak lagi menyaring data.
+Pencarian, pengurutan, serta status ketersediaan pada data tetap tersedia.
+
+REVISI 19 OKTOBER 2026: VERIFIKASI EMAIL SAJA
+
+OTP telepon dihapus dari pengiriman, route, halaman aktivasi, dan syarat akses akun.
+Nomor HP tetap disimpan untuk kontak; hanya perubahan email meminta verifikasi ulang.
+Tes regresi diperbarui, tetapi belum dijalankan karena PHP/Composer/Docker tidak tersedia.
+Panduan terbaru: PANDUAN_UPDATE_OTP_DAN_FILTER.md
+
+CATATAN HISTORIS REVISI SEBELUMNYA (hasil tes bukan hasil revisi terbaru):
+
 REVISI HOMCUTS - 17 OKTOBER 2026
 
 BERKAS DIUBAH

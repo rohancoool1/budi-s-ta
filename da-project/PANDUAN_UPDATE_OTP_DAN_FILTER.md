@@ -1,6 +1,6 @@
 # HOMCUTS — Login pelanggan, OTP, dan filter capster
 
-Revisi: 17 Oktober 2026.
+Revisi: 19 Oktober 2026 — verifikasi email saja.
 
 ## Hasil observasi
 
@@ -16,22 +16,22 @@ Login salah ditolak. Login pelanggan memakai guard terpisah dari admin; tujuan l
 
 1. **Konfirmasi kata sandi:** `password_confirmation` wajib, harus sama persis, dan mendapat pesan kesalahan Bahasa Indonesia. Formulir juga memberi kesalahan langsung sebelum dikirim.
 2. **Aktivasi akun:** setelah daftar, akun disimpan sebagai belum terverifikasi dan pelanggan diarahkan ke `/pelanggan/verifikasi`. Sesi ini memungkinkan pelanggan menyelesaikan verifikasi, tetapi belum membuka halaman akun maupun transaksi sebagai pelanggan yang masuk.
-3. **Dua kontak wajib diverifikasi:** email menerima kode lewat SMTP; nomor HP menerima kode lewat SMS Twilio. Masing-masing mempunyai kode dan status sendiri. Verifikasi boleh dilakukan dalam urutan apa pun. Ini adalah OTP aktivasi kontak, bukan OTP tambahan setiap kali login.
+3. **Hanya email wajib diverifikasi:** OTP dikirim melalui SMTP. Setelah email terverifikasi, akun aktif tanpa OTP nomor HP. Endpoint OTP telepon ditutup dan pengirim SMS dihapus.
 4. **Perlindungan kode:** enam angka acak, disimpan sebagai hash, berlaku 10 menit, maksimal 5 percobaan per kode, jeda kirim ulang 60 detik, dan maksimal 5 pengiriman per jam untuk setiap akun/kanal serta tujuan/kanal. Kirim ulang mengganti kode lama; kode yang dipakai tidak bisa dipakai ulang.
-5. **Kontak salah dapat diperbaiki:** perubahan email/HP membutuhkan kata sandi saat ini. Status verifikasi dan kode lama dari kontak yang berubah dibatalkan. Kontak yang tidak berubah tetap terverifikasi.
+5. **Kontak salah dapat diperbaiki:** perubahan email/HP membutuhkan kata sandi saat ini. Perubahan email membatalkan status verifikasi email dan kode email lama. Perubahan nomor HP tidak membatalkan verifikasi email dan tidak meminta OTP.
 6. **Kegagalan pengiriman terlihat:** akun tetap tersimpan, kontak tetap belum terverifikasi, dan pengguna dapat mencoba kirim ulang. Driver email `log`/`array` tidak dianggap sebagai pengiriman OTP sungguhan. OTP tidak ditampilkan di halaman, disimpan dalam session old-input, atau ditulis oleh kode ini ke log aplikasi.
 7. **Nomor HP:** format `08...` dan `628...` dinormalisasi menjadi `+628...`. Nomor internasional juga dapat menggunakan format `+kode-negara...`.
-8. **Filter capster:** Admin → Capster → pilih nama → Terapkan filter. Hasil hanya berisi capster yang dipilih. Ada pilihan semua capster, filter ketersediaan, dan tombol Reset filter. Pengurutan dan pencarian tetap dapat digabungkan.
+8. **Halaman Capster:** filter nama capster dan ketersediaan di atas tabel sudah dihapus, termasuk tombol Terapkan/Reset filter. Parameter filter lama pada URL diabaikan. Pencarian dan pengurutan tabel tetap tersedia.
 9. **Pengujian Docker:** image pengujian sekarang memasang dependency development sendiri. Pengujian tidak membutuhkan folder `vendor` dari komputer host dan diarahkan ke database `barbershop_testing`.
 
-**Akun lama:** kolom verifikasi baru awalnya kosong. Pelanggan yang sudah ada juga diminta memverifikasi kedua kontak pada login berikutnya. Data akun dan riwayat tidak dihapus. Jika kontak lama salah, gunakan perbaikan kontak di halaman verifikasi.
+**Akun lama:** kolom verifikasi baru awalnya kosong. Pelanggan yang emailnya belum terverifikasi diminta memverifikasi email pada login berikutnya; email yang sudah terverifikasi langsung dapat dipakai. Data akun dan riwayat tidak dihapus. Jika kontak lama salah, gunakan perbaikan kontak di halaman verifikasi.
 
 Alur belanja/booking sebagai tamu masih tersedia sebagaimana proyek awal. Transaksi tamu tidak otomatis masuk ke riwayat akun.
 
 ## Memasang revisi pada proyek Docker yang sudah berjalan
 
 1. Cadangkan folder proyek dan database yang sedang dipakai.
-2. Ekstrak ZIP revisi dan salin isinya ke **folder proyek yang sama**. Pertahankan file `barbershop-laravel/.env` milik Anda. Jangan mengganti `APP_KEY` yang sudah digunakan. Paket ini tidak berisi `.env` aktif maupun kredensial pengirim.
+2. Ekstrak ZIP revisi dan salin isinya ke **folder proyek yang sama**. Pertahankan file `barbershop-laravel/.env` milik Anda. Jangan mengganti `APP_KEY` yang sudah digunakan. Paket mempertahankan `.env` dari unggahan Anda dengan konfigurasi SMS dihapus; saat memperbarui instalasi lain, tetap gunakan `.env` milik instalasi tersebut.
 3. Isi pengaturan OTP pada `.env` seperti bagian berikut. Mengedit `.env.example` saja tidak mengubah aplikasi yang sedang berjalan.
 4. Buka terminal pada folder `da-project` yang berisi `compose.yaml`, lalu jalankan:
 
@@ -53,7 +53,7 @@ Gunakan folder Compose/nama proyek yang sama supaya volume database lama tetap d
 
 ## Konfigurasi pengiriman OTP nyata
 
-Implementasi sudah tersedia, tetapi pengiriman nyata memerlukan akun SMTP dan akun pengirim SMS. Tidak ada kredensial layanan nyata yang ditanamkan dalam paket.
+Implementasi sudah tersedia, tetapi pengiriman nyata memerlukan akun SMTP. Pengaturan SMTP dari unggahan tidak diubah; sesuaikan dengan layanan Anda.
 
 ### Email melalui SMTP
 
@@ -73,19 +73,9 @@ MAIL_FROM_NAME="HOMCUTS"
 
 Gunakan alamat pengirim yang diizinkan oleh penyedia. Ikuti pengaturan TLS/port dari penyedia; bila penyedia mensyaratkan implicit TLS pada port 465, gunakan `MAIL_SCHEME=smtps` dan `MAIL_PORT=465`. Jangan meninggalkan `MAIL_URL` lama yang menunjuk ke layanan lain. OTP email secara khusus memakai mailer `CUSTOMER_OTP_MAILER`.
 
-### Nomor HP melalui SMS Twilio
+### Nomor telepon
 
-```dotenv
-CUSTOMER_OTP_SMS_DRIVER=twilio
-TWILIO_ACCOUNT_SID=isi-account-sid-anda
-TWILIO_AUTH_TOKEN=isi-auth-token-anda
-TWILIO_FROM="isi-pengirim-sms-yang-diizinkan"
-TWILIO_MESSAGING_SERVICE_SID=
-```
-
-Gunakan sender yang disetujui untuk tujuan nomor pelanggan, dengan izin pengiriman dan saldo layanan yang sesuai. Jika memakai Messaging Service, isi `TWILIO_MESSAGING_SERVICE_SID`; nilai ini diprioritaskan dibandingkan `TWILIO_FROM`. Nomor penerima dikirim dalam format internasional, misalnya `+6281234567890`.
-
-Ini menggunakan **SMS**, bukan WhatsApp. Bila driver masih `disabled` atau kredensial belum lengkap, aplikasi menampilkan kesalahan pengiriman dan tidak mengaktifkan akun. Respons API diterima/antre tidak membuktikan pesan sudah sampai ke HP; penerimaan SMS perlu diperiksa saat uji nyata.
+Nomor HP tetap disimpan dan divalidasi formatnya untuk kontak booking/pesanan, tetapi tidak diverifikasi dengan OTP. Konfigurasi Twilio tidak diperlukan lagi. Kolom `phone_verified_at` dan data kode telepon lama dipertahankan untuk kompatibilitas database; keduanya tidak lagi menentukan akses akun dan kode telepon lama tidak dapat digunakan. Tidak ada migration baru atau reset database yang diperlukan.
 
 Setelah mengubah `.env` pada Docker yang sudah berjalan, buat ulang container agar variabel lingkungan baru terbaca:
 
@@ -99,23 +89,37 @@ docker compose restart scheduler
 
 1. Buka `/pelanggan/daftar`, isi kata sandi dan ulangi kata sandi berbeda. Formulir harus menolak. Server juga menolak bila pemeriksaan browser dilewati.
 2. Daftar memakai email dan nomor HP yang benar-benar Anda kuasai. Akun tersimpan, lalu halaman verifikasi terbuka.
-3. Masukkan OTP email. Status email berubah, tetapi akun belum aktif sampai OTP SMS juga benar.
-4. Masukkan OTP SMS. Pelanggan diarahkan ke halaman akun setelah kedua kontak terverifikasi.
+3. Masukkan OTP email. Akun langsung aktif dan pelanggan diarahkan ke halaman akun.
+4. Pastikan halaman verifikasi tidak menampilkan formulir OTP SMS.
 5. Keluar, lalu masuk kembali memakai email dan kata sandi. Akun terverifikasi langsung menuju halaman akun; OTP aktivasi tidak diminta ulang.
-6. Ubah salah satu kontak pada profil dengan kata sandi saat ini. Kontak baru harus diverifikasi kembali.
-7. Buka Admin → Capster. Pilih satu nama, klik Terapkan filter, pastikan hanya satu capster muncul. Klik Reset filter untuk menampilkan semuanya.
+6. Ubah salah satu kontak pada profil dengan kata sandi saat ini. Hanya email baru yang harus diverifikasi kembali. Perubahan nomor HP tidak meminta OTP.
+7. Buka Admin → Capster. Pastikan panel filter tidak muncul dan daftar menampilkan capster aktif maupun nonaktif.
 
-Jika OTP belum diterima, periksa konfigurasi pengirim, folder spam, nomor tujuan, dan status pengiriman pada penyedia. Gunakan Kirim ulang setelah jeda. Jangan berikan kode OTP atau kredensial pengirim kepada orang lain.
+Jika OTP belum diterima, periksa konfigurasi pengirim, folder spam, alamat email tujuan, dan status pengiriman pada penyedia. Gunakan Kirim ulang setelah jeda. Jangan berikan kode OTP atau kredensial pengirim kepada orang lain.
 
 ## Hasil pengujian dan batas pemeriksaan
 
-- **104 pengujian / 1.128 assertion: lulus** pada PHP 8.4 dengan database SQLite in-memory.
-- Di dalamnya ada **21 pengujian pelanggan/OTP** dan **3 pengujian filter capster**.
-- **2 pengujian baseline** terhadap kode pendaftaran awal juga lulus: konfirmasi berbeda ditolak; konfirmasi sama diterima.
-- Build produksi Vite berhasil. Pemeriksaan sintaks JavaScript aplikasi, editor gambar admin, dan konfigurasi Vite berhasil.
-- Konfigurasi Compose diperiksa secara statis dan database test dipisahkan. Image Docker/MySQL belum dijalankan di lingkungan pemeriksaan ini karena Docker tidak tersedia.
-- Email dan HTTP SMS memakai fake dalam pengujian otomatis. Pengiriman ke email/nomor nyata belum diuji; lakukan langkah uji nyata di atas setelah mengisi layanan pengirim.
-- UI diuji melalui respons HTTP/render Blade, belum melalui browser interaktif. Kegagalan penerimaan email/SMS pada provider/operator tidak dapat dinyatakan selesai tanpa uji nyata.
+Revisi 19 Oktober: alur kode, route, tampilan, konfigurasi, dan perbedaan berkas diperiksa secara statis. Tes halaman Capster disesuaikan untuk penghapusan filter dan mempertahankan pencarian/pengurutan. Tes regresi diperbarui untuk pendaftaran email saja, aktivasi tanpa status telepon, penolakan endpoint telepon, perubahan nomor tanpa verifikasi ulang, OTP email kedaluwarsa, dan kegagalan pengiriman email.
+
+PHP, Composer, dan Docker tidak tersedia di lingkungan pengerjaan revisi ini; tes PHPUnit, render Blade, dan uji aplikasi belum dijalankan ulang. Hasil lulus dari revisi sebelumnya tidak menjadi hasil pengujian revisi ini. Jalankan pengujian di bawah dan uji email nyata dengan SMTP Anda sebelum menggunakan perubahan di produksi.
+
+## Detail capster
+
+Di Admin → Capster, klik **Details** pada kolom Detail sebelum Tindakan. Halaman menampilkan profil, jam kerja, jumlah layanan selesai, transaksi selesai, layanan belum selesai/dibatalkan, rekap jenis layanan selesai, dan riwayat 15 item per halaman dengan tautan transaksi.
+
+Riwayat memakai item layanan pada transaksi (`order_items`) dengan capster yang bersangkutan, mencakup booking serta walk-in/kasir. Jumlah pekerjaan selesai adalah penjumlahan kuantitas layanan pada transaksi berstatus `completed`; produk, transaksi tertunda, dan transaksi dibatalkan tidak menambah jumlah selesai. Ringkasan meliputi semua hasil yang cocok dengan filter aktif, bukan hanya halaman aktif. Booking tidak dijumlahkan lagi secara terpisah agar tidak terhitung ganda.
+
+Tanggal menunjukkan jadwal mulai/akhir layanan, bukan waktu penyelesaian aktual. Jika jadwal tidak tercatat, halaman menyatakan hal tersebut dan menampilkan tanggal pembuatan transaksi sebagai referensi. Riwayat tanpa item layanan/capster yang tercatat tidak bisa diatribusikan secara otomatis. Tidak ada perubahan skema database. Halaman hanya dapat diakses admin.
+
+Tes `CapsterDetailTest` ditambahkan untuk pembatasan akses, perhitungan dan isolasi riwayat, paginasi, kondisi kosong, serta tautan daftar. Pemeriksaan statis dilakukan; PHPUnit dan render Blade belum dijalankan karena runtime PHP/Composer/Docker tidak tersedia.
+
+## Periode dan pengurutan detail capster
+
+Pilih Semua waktu, Hari ini, Tanggal tertentu, Per bulan, atau Per tahun, lalu Terapkan filter. Hari ini mengikuti zona waktu aplikasi. Ringkasan dan rekap mengikuti periode pada semua halaman.
+
+Klik judul kolom Jadwal layanan, Pelanggan, Layanan, Jumlah, Sumber, Status, Pembayaran, atau Transaksi untuk mengurutkan. Klik lagi untuk membalik urutan naik/turun. Panah menunjukkan kolom dan arah aktif. Jumlah dan nomor transaksi diurutkan secara numerik; sumber/status/pembayaran mengikuti label yang ditampilkan. Bawaan adalah jadwal terbaru lebih dulu. Mengganti kolom urutan kembali ke halaman pertama; paginasi mempertahankan periode dan urutan. Mengubah periode mempertahankan urutan yang dipilih. Kotak filter per kolom dari revisi sebelumnya telah dihapus.
+
+Periode memakai jadwal layanan atau jadwal booking, lalu tanggal pembuatan transaksi jika jadwal kosong. Bukan waktu penyelesaian aktual. Tes pengurutan dan pembatasan parameter sudah disiapkan, belum dijalankan karena PHP/Composer/Docker tidak tersedia.
 
 ## Mengulang pengujian
 
@@ -147,6 +151,5 @@ Service `test` memakai dependency development, database `barbershop_testing`, ca
 
 - Laravel Validation: https://laravel.com/docs/13.x/validation
 - Laravel Mail: https://laravel.com/docs/13.x/mail
-- Twilio Messages API: https://www.twilio.com/docs/messaging/api/message-resource
 
 Dokumen pendukung lama dalam folder `output` dipertahankan. Untuk fitur login, OTP, dan petunjuk pengujian yang berubah pada revisi ini, gunakan panduan ini dan kode terbaru.
