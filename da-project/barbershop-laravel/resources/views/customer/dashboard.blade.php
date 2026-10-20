@@ -47,7 +47,7 @@
                     <div>
                         <label class="field-label mb-2" for="current_password">Kata sandi saat ini</label>
                         <input class="form-control" id="current_password" name="current_password" type="password" autocomplete="current-password">
-                        <p class="mt-2 text-xs leading-6 text-muted">Wajib diisi jika email atau nomor HP diubah. Hanya perubahan email yang memerlukan verifikasi ulang.</p>
+                        <p class="mt-2 text-xs leading-6 text-muted">Wajib diisi jika email atau nomor HP diubah. Email atau nomor WhatsApp yang diubah harus diverifikasi kembali.</p>
                         @error('current_password') <p class="mt-2 text-xs text-red-700">{{ $message }}</p> @enderror
                     </div>
                     <button class="btn-primary w-full" type="submit">Simpan perubahan <span>→</span></button>

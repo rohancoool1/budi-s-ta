@@ -63,8 +63,8 @@ class CapsterDetailTest extends TestCase
             $this->serviceOrder($barber, 'completed', 1, 'Layanan '.$i);
         }
         $this->actingAs(User::factory()->create(['is_admin' => true]))
-            ->get(route('admin.capsters.show', ['barber' => $barber, 'page' => 2, 'period' => 'month', 'month' => '2026-10']))->assertOk()
-            ->assertViewHas('history', fn ($history) => $history->count() === 1 && $history->total() === 16 && str_contains($history->url(1), 'month=2026-10'))
+            ->get(route('admin.capsters.show', ['barber' => $barber, 'page' => 2, 'period' => 'month', 'date' => '2026-10-19']))->assertOk()
+            ->assertViewHas('history', fn ($history) => $history->count() === 1 && $history->total() === 16 && str_contains($history->url(1), 'date=2026-10-19'))
             ->assertViewHas('summary', fn ($summary) => $summary['completed'] === 16);
         foreach (['capsters', 'barbers'] as $resource) {
             $this->get(route('admin.resources.index', ['resource' => $resource]))->assertOk()
@@ -82,9 +82,9 @@ class CapsterDetailTest extends TestCase
             $this->serviceOrder($barber, 'completed', 1, 'Layanan periode')->update(['service_starts_at' => $date]);
         }
         $this->actingAs(User::factory()->create(['is_admin' => true]));
-        foreach ([['period' => 'today', 'expected' => 2], ['period' => 'month', 'month' => '2026-10', 'expected' => 4],
-            ['period' => 'year', 'year' => '2026', 'expected' => 5],
-            ['period' => 'date', 'date' => '2026-11-01', 'expected' => 1]] as $case) {
+        foreach ([['period' => 'day', 'date' => '2026-10-19', 'expected' => 2], ['period' => 'month', 'date' => '2026-10-19', 'expected' => 4],
+            ['period' => 'year', 'date' => '2026-10-19', 'expected' => 5],
+            ['period' => 'day', 'date' => '2026-11-01', 'expected' => 1]] as $case) {
             $expected = $case['expected'];
             unset($case['expected']);
             $this->get(route('admin.capsters.show', ['barber' => $barber, ...$case]))->assertOk()
@@ -104,7 +104,7 @@ class CapsterDetailTest extends TestCase
         foreach (['asc' => $first, 'desc' => $second] as $direction => $expected) {
             foreach (['quantity', 'service', 'transaction'] as $sort) {
                 $this->get(route('admin.capsters.show', [
-                    'barber' => $barber, 'period' => 'month', 'month' => '2026-10',
+                    'barber' => $barber, 'period' => 'month', 'date' => '2026-10-19',
                     'sort' => $sort, 'direction' => $direction,
                 ]))->assertOk()->assertViewHas('history', fn ($history) =>
                     $history->total() === 2 && $history->first()->order_id === $expected->id)
@@ -133,13 +133,32 @@ class CapsterDetailTest extends TestCase
         $order->forceFill(['service_starts_at' => null, 'service_ends_at' => null,
             'created_at' => '2025-02-03 10:00:00'])->save();
         $this->actingAs(User::factory()->create(['is_admin' => true]));
-        $this->getJson(route('admin.capsters.show', ['barber' => $barber, 'period' => 'month', 'month' => '2026-13']))
-            ->assertUnprocessable()->assertJsonValidationErrors('month');
-        $this->getJson(route('admin.capsters.show', ['barber' => $barber, 'period' => 'year']))
-            ->assertUnprocessable()->assertJsonValidationErrors('year');
-        $this->get(route('admin.capsters.show', ['barber' => $barber, 'period' => 'date', 'date' => '2025-02-03']))
+        $this->getJson(route('admin.capsters.show', ['barber' => $barber, 'period' => 'month', 'date' => '2026-02-30']))
+            ->assertUnprocessable()->assertJsonValidationErrors('date');
+        $this->getJson(route('admin.capsters.show', ['barber' => $barber, 'period' => 'invalid']))
+            ->assertUnprocessable()->assertJsonValidationErrors('period');
+        $this->get(route('admin.capsters.show', ['barber' => $barber, 'period' => 'day', 'date' => '2025-02-03']))
             ->assertOk()->assertSee('Jadwal tidak tercatat')
             ->assertViewHas('history', fn ($history) => $history->total() === 1);
+    }
+
+    public function test_month_and_year_are_derived_from_the_selected_date_and_blank_date_shows_all(): void
+    {
+        $barber = Barber::firstOrFail();
+        foreach (['2024-02-01 00:00:00', '2024-02-29 23:59:59', '2024-03-01 00:00:00',
+            '2025-01-01 00:00:00'] as $date) {
+            $this->serviceOrder($barber, 'completed', 1, 'Layanan kalender')->update(['service_starts_at' => $date]);
+        }
+        $this->actingAs(User::factory()->create(['is_admin' => true]));
+        foreach (['day' => 1, 'month' => 2, 'year' => 3] as $period => $expected) {
+            $this->get(route('admin.capsters.show', ['barber' => $barber, 'date' => '2024-02-29', 'period' => $period]))
+                ->assertOk()->assertViewHas('history', fn ($history) => $history->total() === $expected)
+                ->assertViewHas('summary', fn ($summary) => $summary['completed'] === $expected)
+                ->assertDontSee('mode tanggal')->assertDontSee('filter-month')->assertDontSee('filter-year');
+        }
+        $this->get(route('admin.capsters.show', ['barber' => $barber, 'date' => '', 'period' => 'year']))
+            ->assertOk()->assertViewHas('history', fn ($history) => $history->total() === 4)
+            ->assertViewHas('periodLabel', 'Semua waktu');
     }
 
     private function serviceOrder(Barber $barber, string $status, int $quantity, string $name): Order

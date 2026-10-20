@@ -25,33 +25,25 @@
         @if ($errors->any())
             <div class="mt-3 text-sm text-red-700" role="alert">{{ $errors->first() }}</div>
         @endif
-        <div class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="mt-4 grid gap-4 sm:grid-cols-2">
+            <div>
+                <label class="field-label mb-2" for="filter-date">Tanggal</label>
+                <input id="filter-date" name="date" type="date" min="1900-01-01" max="9998-12-31" class="form-control w-full" value="{{ $filters['date'] }}">
+            </div>
             <div>
                 <label class="field-label mb-2" for="period">Periode</label>
                 <select id="period" name="period" class="form-control w-full">
-                    @foreach (['all' => 'Semua waktu', 'today' => 'Hari ini', 'date' => 'Tanggal tertentu', 'month' => 'Per bulan', 'year' => 'Per tahun'] as $value => $label)
-                        <option value="{{ $value }}" @selected(($filters['period'] ?? 'all') === $value)>{{ $label }}</option>
+                    @foreach (['day' => 'Berdasarkan hari', 'month' => 'Berdasarkan bulan', 'year' => 'Berdasarkan tahun'] as $value => $label)
+                        <option value="{{ $value }}" @selected($filters['period'] === $value)>{{ $label }}</option>
                     @endforeach
                 </select>
-            </div>
-            <div>
-                <label class="field-label mb-2" for="filter-date">Tanggal (mode tanggal)</label>
-                <input id="filter-date" name="date" type="date" class="form-control w-full" value="{{ $filters['date'] ?? now()->format('Y-m-d') }}">
-            </div>
-            <div>
-                <label class="field-label mb-2" for="filter-month">Bulan (mode per bulan)</label>
-                <input id="filter-month" name="month" type="month" class="form-control w-full" value="{{ $filters['month'] ?? now()->format('Y-m') }}">
-            </div>
-            <div>
-                <label class="field-label mb-2" for="filter-year">Tahun (mode per tahun)</label>
-                <input id="filter-year" name="year" type="number" min="1900" max="9998" class="form-control w-full" value="{{ $filters['year'] ?? now()->year }}">
             </div>
         </div>
         <div class="mt-4 flex flex-wrap items-center gap-4">
             <button type="submit" class="btn-primary">Terapkan filter <span>→</span></button>
             <a class="link-button" href="{{ route('admin.capsters.show', $barber) }}">Reset semua filter</a>
         </div>
-        <p class="mt-3 text-xs leading-6 text-muted">Periode memakai jadwal layanan; jika jadwal tidak tersedia, tanggal pembuatan transaksi digunakan. Hari ini mengikuti {{ config('app.timezone') }}. Klik judul kolom tabel untuk mengurutkan naik atau turun.</p>
+        <p class="mt-3 text-xs leading-6 text-muted">Pilih tanggal, lalu tampilkan berdasarkan hari, bulan, atau tahun dari tanggal tersebut. Kosongkan tanggal untuk semua riwayat. Zona waktu: {{ config('app.timezone') }}.</p>
     </form>
     <p class="mb-4 text-sm font-bold">Periode: {{ $periodLabel }}</p>
 

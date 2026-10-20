@@ -23,7 +23,7 @@ class CustomerVerificationController extends Controller
         }
 
         return view('customer.verify', [
-            'verificationCodes' => CustomerVerificationCode::query()->where('customer_id', $customer->id)->where('channel', 'email')->get()->keyBy('channel'),
+            'verificationCodes' => CustomerVerificationCode::query()->where('customer_id', $customer->id)->get()->keyBy('channel'),
         ]);
     }
 
@@ -32,7 +32,7 @@ class CustomerVerificationController extends Controller
         $sent = $this->verification->send($request->user('customer'), $channel);
 
         return to_route('customer.verification.notice')->with('status', $sent
-            ? 'Kode baru telah dikirim. Gunakan kode terbaru; kode sebelumnya tidak berlaku.'
+            ? 'Permintaan pengiriman kode diterima. Periksa email atau WhatsApp dan gunakan kode terbaru; kode sebelumnya tidak berlaku.'
             : 'Kontak ini sudah terverifikasi.');
     }
 
@@ -45,9 +45,13 @@ class CustomerVerificationController extends Controller
         ]);
         $this->verification->verify($request->user('customer'), $channel, $data[$field]);
 
-        $request->session()->regenerate();
+        if ($request->user('customer')->fresh()->hasVerifiedContacts()) {
+            $request->session()->regenerate();
 
-        return to_route('customer.dashboard')->with('success', 'Email terverifikasi. Akun Anda siap digunakan.');
+            return to_route('customer.dashboard')->with('success', 'Email dan nomor WhatsApp terverifikasi. Akun Anda siap digunakan.');
+        }
+
+        return to_route('customer.verification.notice')->with('status', 'Verifikasi berhasil. Selesaikan verifikasi kontak yang satunya.');
     }
 
     public function updateContacts(Request $request): RedirectResponse
@@ -68,6 +72,6 @@ class CustomerVerificationController extends Controller
         $customer->refresh();
 
         return to_route('customer.verification.notice')
-            ->with('status', 'Kontak disimpan. Tekan Kirim kode jika email belum terverifikasi.');
+            ->with('status', 'Kontak disimpan. Tekan Kirim kode pada kontak yang belum terverifikasi.');
     }
 }

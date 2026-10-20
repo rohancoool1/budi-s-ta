@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Services\CustomerVerificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request as ClientRequest;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -18,6 +19,9 @@ class CustomerVerificationTest extends TestCase
 {
     use RefreshDatabase;
 
+    private array $whatsappCodes = [];
+    private bool $rejectWhatsapp = false;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -25,12 +29,21 @@ class CustomerVerificationTest extends TestCase
         config([
             'app.key' => 'base64:'.base64_encode(str_repeat('t', 32)),
             'customer_verification.email_mailer' => 'smtp',
+            'customer_verification.fonnte_token' => 'test-fonnte-device-token',
             'mail.mailers.smtp.host' => 'smtp.example.test',
             'mail.from.address' => 'homcuts@example.test',
         ]);
         Mail::fake();
         Http::preventStrayRequests();
+        Http::fake(['https://api.fonnte.com/send' => function (ClientRequest $request) {
+            if ($this->rejectWhatsapp) {
+                return Http::response(['message' => 'Rejected'], 400);
+            }
+            preg_match('/Anda: ([0-9]{6})/', $request['message'], $matches);
+            $this->whatsappCodes[] = $matches[1];
 
+            return Http::response(['status' => true, 'id' => ['message-test'], 'process' => 'pending'], 200);
+        }]);
     }
 
     public function test_mismatched_password_confirmation_never_creates_an_account_or_sends_otp(): void
@@ -53,7 +66,7 @@ class CustomerVerificationTest extends TestCase
         $this->assertDatabaseCount('customers', 0);
     }
 
-    public function test_registration_sends_only_email_and_keeps_account_unverified(): void
+    public function test_registration_sends_two_distinct_channel_challenges_and_keeps_account_unverified(): void
     {
         $customer = $this->registerCustomer();
         $this->assertAuthenticatedAs($customer, 'customer');
@@ -61,47 +74,35 @@ class CustomerVerificationTest extends TestCase
         $this->assertTrue(Hash::check('ValidPass123', $customer->password));
         $this->assertFalse($customer->hasVerifiedContacts());
         Mail::assertSent(CustomerVerificationMail::class, fn ($mail) => $mail->hasTo($customer->email));
-        Http::assertNothingSent();
-        $this->assertDatabaseCount('customer_verification_codes', 1);
-        $this->assertDatabaseMissing('customer_verification_codes', ['channel' => 'phone']);
+        Http::assertSent(fn (ClientRequest $request) => $request['target'] === ltrim($customer->phone, '+')
+            && $request->hasHeader('Authorization', 'test-fonnte-device-token')
+            && $request['countryCode'] === '0' && str_contains($request['message'], $this->whatsappCodes[0]));
+        $this->assertDatabaseCount('customer_verification_codes', 2);
         $record = CustomerVerificationCode::where('channel', 'email')->firstOrFail();
         $this->assertNotSame($this->emailCode(), $record->code_hash);
         $this->assertTrue(Hash::check($this->emailCode(), $record->code_hash));
-        $this->get(route('customer.verification.notice'))->assertOk()->assertSee('Verifikasi email Anda.')->assertDontSee('phone_code')->assertDontSee('SMS');
+        $this->get(route('customer.verification.notice'))->assertOk()->assertSee('Verifikasi kontak Anda.');
         $this->get(route('customer.dashboard'))->assertRedirect(route('customer.verification.notice'));
     }
 
-    public function test_email_alone_activates_account_without_phone_verification(): void
+    public function test_email_alone_is_insufficient_and_both_codes_activate_the_account(): void
     {
         $customer = $this->registerCustomer();
-        $this->verifyCode('email', $this->emailCode())->assertRedirect(route('customer.dashboard'));
+        $this->verifyCode('email', $this->emailCode())->assertRedirect(route('customer.verification.notice'));
         $this->assertNotNull($customer->fresh()->email_verified_at);
         $this->assertNull($customer->fresh()->phone_verified_at);
+        $this->get(route('customer.dashboard'))->assertRedirect(route('customer.verification.notice'));
+        $this->verifyCode('phone', $this->whatsappCodes[0])->assertRedirect(route('customer.dashboard'));
         $this->assertTrue($customer->fresh()->hasVerifiedContacts());
         $this->get(route('customer.dashboard'))->assertOk();
     }
 
-    public function test_phone_otp_endpoints_are_disabled(): void
+    public function test_phone_can_be_verified_before_email(): void
     {
-        $this->registerCustomer();
-        $this->verifyCode('phone', '123456')->assertNotFound();
-        $this->post(route('customer.verification.send', ['channel' => 'phone']))->assertNotFound();
-        Http::assertNothingSent();
-    }
-
-    public function test_phone_change_does_not_revoke_email_verification(): void
-    {
-        $customer = $this->verifiedCustomer();
-        $verifiedAt = $customer->email_verified_at->toDateTimeString();
-        $this->actingAs($customer, 'customer')->patch(route('customer.account.update'), [
-            'name' => $customer->name, 'email' => $customer->email,
-            'phone' => '081299999999', 'current_password' => 'ValidPass123',
-        ])->assertRedirect(route('customer.dashboard'))->assertSessionHasNoErrors();
-        $this->assertSame('+6281299999999', $customer->fresh()->phone);
-        $this->assertSame($verifiedAt, $customer->fresh()->email_verified_at->toDateTimeString());
-        $this->get(route('customer.dashboard'))->assertOk();
-        Mail::assertNothingSent();
-        Http::assertNothingSent();
+        $customer = $this->registerCustomer();
+        $this->verifyCode('phone', $this->whatsappCodes[0])->assertRedirect(route('customer.verification.notice'));
+        $this->assertFalse($customer->fresh()->hasVerifiedContacts());
+        $this->verifyCode('email', $this->emailCode())->assertRedirect(route('customer.dashboard'));
     }
 
     public function test_five_wrong_attempts_lock_the_challenge_even_for_the_correct_code(): void
@@ -123,14 +124,9 @@ class CustomerVerificationTest extends TestCase
         $verifiedAt = $customer->fresh()->email_verified_at->toDateTimeString();
         $this->verifyCode('email', $this->emailCode())->assertSessionHasErrors('email_code');
         $this->assertSame($verifiedAt, $customer->fresh()->email_verified_at->toDateTimeString());
-    }
-
-    public function test_expired_email_code_cannot_activate_account(): void
-    {
-        $customer = $this->registerCustomer();
         $this->travel(11)->minutes();
-        $this->verifyCode('email', $this->emailCode())->assertSessionHasErrors('email_code');
-        $this->assertNull($customer->fresh()->email_verified_at);
+        $this->verifyCode('phone', $this->whatsappCodes[0])->assertSessionHasErrors('phone_code');
+        $this->assertNull($customer->fresh()->phone_verified_at);
     }
 
     public function test_resend_enforces_cooldown_and_invalidates_previous_code(): void
@@ -217,7 +213,7 @@ class CustomerVerificationTest extends TestCase
         $this->patch(route('customer.account.update'), [...$payload, 'current_password' => 'ValidPass123'])
             ->assertRedirect(route('customer.verification.notice'));
         $this->assertNull($customer->fresh()->email_verified_at);
-        $this->assertNull($customer->fresh()->phone_verified_at);
+        $this->assertNotNull($customer->fresh()->phone_verified_at);
         $this->get(route('customer.dashboard'))->assertRedirect(route('customer.verification.notice'));
     }
 
@@ -236,17 +232,25 @@ class CustomerVerificationTest extends TestCase
 
     public function test_delivery_failure_is_visible_and_does_not_activate_or_delete_account(): void
     {
-        Mail::shouldReceive('mailer')->once()->with('smtp')->andReturnSelf();
-        Mail::shouldReceive('to')->once()->andReturnSelf();
-        Mail::shouldReceive('send')->once()->andThrow(new \RuntimeException('Delivery failed'));
+        $this->rejectWhatsapp = true;
         $this->post(route('customer.register.store'), $this->registration())
-            ->assertRedirect(route('customer.verification.notice'))->assertSessionHasErrors('email_code');
+            ->assertRedirect(route('customer.verification.notice'))->assertSessionHasErrors('phone_code');
         $customer = Customer::firstOrFail();
         $this->assertFalse($customer->hasVerifiedContacts());
-        $record = CustomerVerificationCode::where('channel', 'email')->firstOrFail();
+        $record = CustomerVerificationCode::where('channel', 'phone')->firstOrFail();
         $this->assertNull($record->sent_at);
         $this->assertSame('', $record->code_hash);
+        Mail::assertSentCount(1);
+    }
+
+    public function test_missing_fonnte_token_does_not_send_whatsapp_but_email_is_still_sent(): void
+    {
+        config(['customer_verification.fonnte_token' => '']);
+        $this->post(route('customer.register.store'), $this->registration())
+            ->assertSessionHasErrors('phone_code');
         Http::assertNothingSent();
+        $this->assertDatabaseMissing('customer_verification_codes', ['channel' => 'phone']);
+        Mail::assertSentCount(1);
     }
 
     public function test_log_mailer_cannot_pretend_to_deliver_a_verification_email(): void
@@ -260,7 +264,7 @@ class CustomerVerificationTest extends TestCase
     public function test_guest_cannot_send_or_verify_codes_and_unknown_channel_is_rejected(): void
     {
         $this->post(route('customer.verification.send', ['channel' => 'email']))->assertRedirect(route('customer.login'));
-        $this->verifyCode('email', '123456')->assertRedirect(route('customer.login'));
+        $this->verifyCode('phone', '123456')->assertRedirect(route('customer.login'));
         $this->actingAs($this->customer(), 'customer')->post('/pelanggan/verifikasi/other/kirim')->assertNotFound();
         Http::assertNothingSent();
     }
@@ -291,6 +295,64 @@ class CustomerVerificationTest extends TestCase
             ->assertSee('Private item '.$customer->id)->assertDontSee('Private item '.$other->id);
     }
 
+    public function test_phone_change_requires_whatsapp_verification_without_revoking_email(): void
+    {
+        $customer = $this->verifiedCustomer();
+        $emailVerifiedAt = $customer->email_verified_at->toDateTimeString();
+        $this->actingAs($customer, 'customer')->patch(route('customer.account.update'), [
+            'name' => $customer->name, 'email' => $customer->email,
+            'phone' => '081299999999', 'current_password' => 'ValidPass123',
+        ])->assertRedirect(route('customer.verification.notice'));
+        $this->assertNull($customer->fresh()->phone_verified_at);
+        $this->assertSame($emailVerifiedAt, $customer->fresh()->email_verified_at->toDateTimeString());
+        $this->get(route('customer.dashboard'))->assertRedirect(route('customer.verification.notice'));
+        $this->post(route('customer.verification.send', ['channel' => 'phone']))->assertSessionHasNoErrors();
+        $this->verifyCode('phone', $this->whatsappCodes[0])->assertRedirect(route('customer.dashboard'));
+        $this->assertTrue($customer->fresh()->hasVerifiedContacts());
+        Mail::assertNothingSent();
+    }
+
+    public function test_email_only_legacy_customer_is_prompted_for_whatsapp_without_losing_email_verification(): void
+    {
+        $customer = $this->customer();
+        $customer->forceFill(['email_verified_at' => now()])->save();
+        $this->post(route('customer.login.store'), ['email' => $customer->email, 'password' => 'ValidPass123'])
+            ->assertRedirect(route('customer.verification.notice'));
+        $this->get(route('customer.verification.notice'))->assertOk()->assertSee('WhatsApp');
+        $this->post(route('customer.verification.send', ['channel' => 'email']))->assertSessionHasNoErrors();
+        Mail::assertNothingSent();
+        $this->post(route('customer.verification.send', ['channel' => 'phone']))->assertSessionHasNoErrors();
+        $this->verifyCode('phone', $this->whatsappCodes[0])->assertRedirect(route('customer.dashboard'));
+    }
+
+    public function test_whatsapp_resend_invalidates_old_code_and_locks_after_five_wrong_attempts(): void
+    {
+        $customer = $this->registerCustomer();
+        $oldCode = $this->whatsappCodes[0];
+        $this->post(route('customer.verification.send', ['channel' => 'phone']))->assertSessionHasErrors('phone_code');
+        $this->travel(61)->seconds();
+        $this->post(route('customer.verification.send', ['channel' => 'phone']))->assertSessionHasNoErrors();
+        $this->verifyCode('phone', $oldCode)->assertSessionHasErrors('phone_code');
+        for ($attempt = 0; $attempt < 4; $attempt++) {
+            $this->verifyCode('phone', '000000')->assertSessionHasErrors('phone_code');
+        }
+        $this->verifyCode('phone', $this->whatsappCodes[1])->assertSessionHasErrors('phone_code');
+        $this->assertNull($customer->fresh()->phone_verified_at);
+        $this->assertNull(session()->getOldInput('phone_code'));
+    }
+
+    public function test_changing_pending_phone_deletes_old_challenge(): void
+    {
+        $customer = $this->registerCustomer();
+        $oldCode = $this->whatsappCodes[0];
+        $this->patch(route('customer.verification.contacts'), [
+            'email' => $customer->email, 'phone' => '081299999999', 'current_password' => 'ValidPass123',
+        ])->assertSessionHasNoErrors();
+        $this->assertDatabaseMissing('customer_verification_codes', ['channel' => 'phone']);
+        $this->verifyCode('phone', $oldCode)->assertSessionHasErrors('phone_code');
+        $this->assertNull($customer->fresh()->phone_verified_at);
+    }
+
     private function registerCustomer(): Customer
     {
         $this->post(route('customer.register.store'), $this->registration())
@@ -313,7 +375,7 @@ class CustomerVerificationTest extends TestCase
     private function verifiedCustomer(): Customer
     {
         $customer = $this->customer();
-        $customer->forceFill(['email_verified_at' => now()])->save();
+        $customer->forceFill(['email_verified_at' => now(), 'phone_verified_at' => now()])->save();
 
         return $customer;
     }

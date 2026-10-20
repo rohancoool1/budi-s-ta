@@ -96,7 +96,7 @@ class CustomerAuthController extends Controller
         $errors = $this->verification->sendMissing($customer);
 
         $response = to_route('customer.verification.notice')
-            ->with('status', 'Akun tersimpan. Verifikasi email untuk mengaktifkan akun Anda.');
+            ->with('status', 'Akun tersimpan. Verifikasi email dan nomor WhatsApp untuk mengaktifkan akun Anda.');
 
         return $errors ? $response->withErrors($errors) : $response;
     }

@@ -14,34 +14,33 @@ class CapsterDetailController extends Controller
 {
     public function __invoke(Request $request, Barber $barber): View
     {
-        $filters = $request->validate([
-            'period' => ['nullable', Rule::in(['all', 'today', 'date', 'month', 'year'])],
-            'date' => ['nullable', 'required_if:period,date', 'date_format:Y-m-d'],
-            'month' => ['nullable', 'required_if:period,month', 'date_format:Y-m'],
-            'year' => ['nullable', 'required_if:period,year', 'integer', 'between:1900,9998'],
+        $validated = $request->validate([
+            'date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:1900-01-01', 'before:9999-01-01'],
+            'period' => ['nullable', Rule::in(['day', 'month', 'year'])],
         ]);
-        $period = $filters['period'] ?? 'all';
-        $today = Carbon::now(config('app.timezone'))->startOfDay();
-        $start = match ($period) {
-            'today' => $today->copy(),
-            'date' => Carbon::createFromFormat('!Y-m-d', $filters['date'], config('app.timezone')),
-            'month' => Carbon::createFromFormat('!Y-m', $filters['month'], config('app.timezone')),
-            'year' => $today->copy()->setDate((int) $filters['year'], 1, 1),
-            default => null,
-        };
-        $end = match ($period) {
-            'today', 'date' => $start->copy()->addDay(),
+        $filters = [
+            'date' => $validated['date'] ?? '',
+            'period' => $validated['period'] ?? 'day',
+        ];
+        $period = $filters['period'];
+        $selectedDate = $filters['date'] !== ''
+            ? Carbon::createFromFormat('!Y-m-d', $filters['date'], config('app.timezone'))
+            : null;
+        $start = $selectedDate ? match ($period) {
+            'month' => $selectedDate->copy()->startOfMonth(),
+            'year' => $selectedDate->copy()->startOfYear(),
+            default => $selectedDate->copy()->startOfDay(),
+        } : null;
+        $end = $start ? match ($period) {
             'month' => $start->copy()->addMonth(),
             'year' => $start->copy()->addYear(),
-            default => null,
-        };
-        $periodLabel = match ($period) {
-            'today' => 'Hari ini · '.$start->format('d/m/Y'),
-            'date' => 'Tanggal '.$start->format('d/m/Y'),
+            default => $start->copy()->addDay(),
+        } : null;
+        $periodLabel = $start ? match ($period) {
             'month' => $start->translatedFormat('F Y'),
             'year' => 'Tahun '.$start->format('Y'),
-            default => 'Semua waktu',
-        };
+            default => 'Tanggal '.$start->format('d/m/Y'),
+        } : 'Semua waktu';
         // Booking and walk-in services share order_items; count each service only once.
         $services = OrderItem::query()
             ->join('orders', 'orders.id', '=', 'order_items.order_id')

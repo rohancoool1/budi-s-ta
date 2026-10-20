@@ -9,7 +9,7 @@
             <a class="text-[9px] font-black uppercase tracking-[.12em] text-muted" href="{{ route('home') }}">← Kembali ke toko</a>
             <p class="section-kicker mt-8">AKUN PELANGGAN</p>
             <h1 class="mt-3 font-display text-5xl tracking-[-.05em]">Buat akun Anda.</h1>
-            <p class="mt-3 text-sm leading-6 text-muted">Setelah mendaftar, verifikasi email melalui kode OTP email. Data akun dipakai untuk mengisi booking dan pesanan secara otomatis.</p>
+            <p class="mt-3 text-sm leading-6 text-muted">Setelah mendaftar, verifikasi email dan nomor telepon melalui OTP email dan WhatsApp. Data akun dipakai untuk mengisi booking dan pesanan secara otomatis.</p>
             <form class="mt-9 grid gap-5 sm:grid-cols-2" method="POST" action="{{ route('customer.register.store') }}" data-customer-register>
                 @csrf
                 <div class="sm:col-span-2">
@@ -18,7 +18,7 @@
                     @error('name') <p class="mt-2 text-xs text-red-700">{{ $message }}</p> @enderror
                 </div>
                 <div>
-                    <label class="field-label mb-2" for="phone">Nomor HP</label>
+                    <label class="field-label mb-2" for="phone">Nomor WhatsApp</label>
                     <input class="form-control bg-white" id="phone" name="phone" type="tel" value="{{ old('phone') }}" autocomplete="tel" placeholder="081234567890" required>
                     @error('phone') <p class="mt-2 text-xs text-red-700">{{ $message }}</p> @enderror
                 </div>

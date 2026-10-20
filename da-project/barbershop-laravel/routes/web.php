@@ -64,9 +64,9 @@ Route::prefix('pelanggan')->name('customer.')->group(function (): void {
     Route::middleware('auth:customer')->group(function (): void {
         Route::get('/verifikasi', [CustomerVerificationController::class, 'show'])->name('verification.notice');
         Route::post('/verifikasi/{channel}/kirim', [CustomerVerificationController::class, 'send'])
-            ->whereIn('channel', ['email'])->middleware('throttle:6,1')->name('verification.send');
+            ->whereIn('channel', ['email', 'phone'])->middleware('throttle:6,1')->name('verification.send');
         Route::post('/verifikasi/{channel}', [CustomerVerificationController::class, 'verify'])
-            ->whereIn('channel', ['email'])->middleware('throttle:10,1')->name('verification.verify');
+            ->whereIn('channel', ['email', 'phone'])->middleware('throttle:10,1')->name('verification.verify');
         Route::patch('/verifikasi/kontak', [CustomerVerificationController::class, 'updateContacts'])
             ->middleware('throttle:5,1')->name('verification.contacts');
         Route::get('/akun', [CustomerAccountController::class, 'show'])->middleware('customer.contacts.verified')->name('dashboard');

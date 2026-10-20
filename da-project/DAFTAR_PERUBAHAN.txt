@@ -1,75 +1,18 @@
-KOREKSI TERBARU: Filter per kolom diganti SORT BY melalui klik judul kolom.
-Klik ulang untuk naik/turun. Filter periode hari ini/tanggal/bulan/tahun tetap ada.
+UPDATE: Filter Detail Capster disederhanakan menjadi satu input Tanggal dan pilihan Periode hari/bulan/tahun.
+Bulan/tahun dihitung dari tanggal yang dipilih. Tanggal kosong menampilkan seluruh riwayat.
+Integrasi OTP email + WhatsApp Fonnte tetap disertakan.
 
-UPDATE: Filter kolom riwayat pada Detail Capster dan periode hari ini/tanggal/bulan/tahun.
-Ringkasan dan rekap mengikuti semua filter, termasuk saat pindah halaman.
-Tidak ada migration tambahan.
+REVISI TERBARU — 20 OKTOBER 2026
 
-UPDATE: Kolom Detail sebelum Tindakan di tabel Capster.
-Tautan Details membuka profil, jumlah layanan selesai/belum selesai/dibatalkan,
-rekap jenis layanan selesai, riwayat jadwal, pelanggan, pembayaran, dan transaksi.
-Riwayat hanya untuk admin, 15 item per halaman; ringkasan mencakup semua halaman.
-Tidak membutuhkan migration baru.
-Tes CapsterDetailTest ditambahkan, belum dijalankan (PHP/Composer/Docker tidak tersedia).
+1. Aktivasi pelanggan membutuhkan OTP email dan nomor telepon.
+2. Email tetap melalui SMTP; nomor telepon memakai WhatsApp Fonnte.
+3. Tambahkan FONNTE_TOKEN pada .env instalasi Anda. Pertahankan APP_KEY/database/SMTP lama.
+4. Token tidak ditanam di kode. .env.example terbaru disertakan dengan placeholder.
+5. Perubahan email/nomor membatalkan hanya verifikasi kontak yang berubah.
+6. Batas kirim ulang/percobaan, kode hash, dan masa berlaku tetap diterapkan di server.
+7. Detail capster, filter periode dan sort by dari revisi sebelumnya dipertahankan.
+8. Panel filter daftar utama Capster tetap dihapus.
+9. Tidak ada migration baru. Tabel/kolom verifikasi lama digunakan kembali.
+10. Tes regresi diperbarui; belum dijalankan karena PHP/Composer/Docker tidak tersedia.
 
-UPDATE: Panel filter nama capster dan ketersediaan di Admin Capster dihapus.
-Parameter capster/active pada halaman tersebut tidak lagi menyaring data.
-Pencarian, pengurutan, serta status ketersediaan pada data tetap tersedia.
-
-REVISI 19 OKTOBER 2026: VERIFIKASI EMAIL SAJA
-
-OTP telepon dihapus dari pengiriman, route, halaman aktivasi, dan syarat akses akun.
-Nomor HP tetap disimpan untuk kontak; hanya perubahan email meminta verifikasi ulang.
-Tes regresi diperbarui, tetapi belum dijalankan karena PHP/Composer/Docker tidak tersedia.
-Panduan terbaru: PANDUAN_UPDATE_OTP_DAN_FILTER.md
-
-CATATAN HISTORIS REVISI SEBELUMNYA (hasil tes bukan hasil revisi terbaru):
-
-REVISI HOMCUTS - 17 OKTOBER 2026
-
-BERKAS DIUBAH
-barbershop-laravel/.env.example
-barbershop-laravel/app/Http/Controllers/Admin/ResourceController.php
-barbershop-laravel/app/Http/Controllers/CustomerAccountController.php
-barbershop-laravel/app/Http/Controllers/CustomerAuthController.php
-barbershop-laravel/app/Models/Customer.php
-barbershop-laravel/bootstrap/app.php
-barbershop-laravel/config/mail.php
-barbershop-laravel/phpunit.xml
-barbershop-laravel/README.md
-barbershop-laravel/resources/js/app.js
-barbershop-laravel/resources/views/admin/resources/index.blade.php
-barbershop-laravel/resources/views/customer/dashboard.blade.php
-barbershop-laravel/resources/views/customer/register.blade.php
-barbershop-laravel/routes/web.php
-barbershop-laravel/tests/Feature/ExampleTest.php
-compose.yaml
-Dockerfile
-
-BERKAS DITAMBAHKAN
-barbershop-laravel/app/Http/Controllers/CustomerVerificationController.php
-barbershop-laravel/app/Http/Middleware/EnsureCustomerContactsVerified.php
-barbershop-laravel/app/Mail/CustomerVerificationMail.php
-barbershop-laravel/app/Models/CustomerVerificationCode.php
-barbershop-laravel/app/Services/CustomerOtpSender.php
-barbershop-laravel/app/Services/CustomerVerificationService.php
-barbershop-laravel/app/Support/CustomerContact.php
-barbershop-laravel/config/customer_verification.php
-barbershop-laravel/database/migrations/2026_10_17_000000_add_customer_contact_verification.php
-barbershop-laravel/public/build/assets/admin-image-editor-DvswCPaF.js
-barbershop-laravel/public/build/assets/app-CSaOkzu9.js
-barbershop-laravel/public/build/assets/app-DnqXrpP0.css
-barbershop-laravel/public/build/manifest.json
-barbershop-laravel/resources/views/customer/verify.blade.php
-barbershop-laravel/resources/views/emails/customer-verification.blade.php
-barbershop-laravel/tests/Feature/CapsterFilterTest.php
-barbershop-laravel/tests/Feature/CustomerVerificationTest.php
-PANDUAN_UPDATE_OTP_DAN_FILTER.md
-
-HASIL UJI
-104 tests, 1128 assertions: PASS (PHP 8.4, SQLite in-memory).
-21 tests pelanggan/OTP + 3 tests filter capster termasuk dalam total.
-Baseline versi awal: 2 tests, 13 assertions: PASS.
-Vite production build dan sintaks JavaScript: PASS.
-Email/SMS menggunakan fake; pengiriman nyata belum diuji.
-Docker/MySQL belum dijalankan; konfigurasi Compose diperiksa secara statis.
+PETUNJUK: PANDUAN_FONNTE.md dan PANDUAN_UPDATE_OTP_DAN_FILTER.md.

@@ -1,6 +1,6 @@
 # HOMCUTS — Laravel
 
-Revisi login pelanggan, OTP email saja, dan filter capster: lihat [panduan update](../PANDUAN_UPDATE_OTP_DAN_FILTER.md). Panduan tersebut menjelaskan aktivasi akun lama, konfigurasi pengirim, dan hasil pengujian.
+Revisi login pelanggan, OTP email + WhatsApp Fonnte, serta detail/pengurutan capster: lihat [panduan update](../PANDUAN_UPDATE_OTP_DAN_FILTER.md). Petunjuk khusus Fonnte: [panduan Fonnte](../PANDUAN_FONNTE.md). Email tetap memakai SMTP.
 
 Proyek ini menggunakan Laravel Blade, Tailwind CSS, Vite, dan JavaScript biasa. Tidak menggunakan React, TypeScript, Vinext, Inertia, Alpine, atau Livewire.
 
